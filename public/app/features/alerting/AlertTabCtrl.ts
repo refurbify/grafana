@@ -316,9 +316,10 @@ export class AlertTabCtrl {
           (foundTarget => (ds: DataSourceApi) => {
             if (!ds.meta.alerting) {
               return Promise.reject('The datasource does not support alerting queries');
-            } else if (ds.targetContainsTemplate && ds.targetContainsTemplate(foundTarget)) {
-              return Promise.reject('Template variables are not supported in alert queries');
             }
+            // else if (ds.targetContainsTemplate && ds.targetContainsTemplate(foundTarget)) {
+            //   return Promise.reject('Template variables are not supported in alert queries');
+            // }
             return Promise.resolve();
           })(foundTarget)
         )

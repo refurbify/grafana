@@ -4,7 +4,7 @@
   "private": true,
   "name": "grafana",
   "version": "7.1.0-pre",
-  "repository": "github:grafana/grafana",
+  "repository": "github:refurbify/grafana",
   "scripts": {
     "api-tests": "jest --notify --watch --config=devenv/e2e-api-tests/jest.js",
     "build": "grunt build",
