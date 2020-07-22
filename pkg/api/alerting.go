@@ -106,6 +106,7 @@ func GetAlerts(c *models.ReqContext) Response {
 		Limit:        c.QueryInt64("limit"),
 		User:         c.SignedInUser,
 		Query:        c.Query("alertQuery"),
+		UserId:       c.SignedInUser.UserId, //Clarity
 	}
 
 	states := c.QueryStrings("state")

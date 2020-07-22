@@ -29,6 +29,7 @@ func addAlertMigrations(mg *Migrator) {
 			{Name: "state_changes", Type: DB_Int, Nullable: false},
 			{Name: "created", Type: DB_DateTime, Nullable: false},
 			{Name: "updated", Type: DB_DateTime, Nullable: false},
+			{Name: "user_id", Type: DB_BigInt, Nullable: false},
 		},
 		Indices: []*Index{
 			{Cols: []string{"org_id", "id"}, Type: IndexType},
