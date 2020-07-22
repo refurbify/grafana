@@ -78,7 +78,7 @@ type Alert struct {
 	ExecutionError string
 	Frequency      int64
 	For            time.Duration
-	AlertQuery     string
+	UserId         int64 //Clarity
 
 	EvalData     *simplejson.Json
 	NewStateDate time.Time
@@ -190,6 +190,7 @@ type GetAlertsQuery struct {
 	Limit        int64
 	Query        string
 	User         *SignedInUser
+	UserId       int64 //Clarity
 
 	Result []*AlertListItemDTO
 }

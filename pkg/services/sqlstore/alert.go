@@ -84,12 +84,15 @@ func HandleAlertsQuery(query *models.GetAlertsQuery) error {
 		alert.eval_data,
 		alert.eval_date,
 		alert.execution_error,
+		alert.user_id,
 		dashboard.uid as dashboard_uid,
 		dashboard.slug as dashboard_slug
 		FROM alert
 		INNER JOIN dashboard on dashboard.id = alert.dashboard_id `)
 
-	builder.Write(`WHERE alert.org_id = ?`, query.OrgId)
+	//Clarity
+	//builder.Write(`WHERE alert.org_id = ?`, query.OrgId)
+	builder.Write(`WHERE alert.user_id = ?`, query.UserId)
 
 	if len(strings.TrimSpace(query.Query)) > 0 {
 		builder.Write(" AND alert.name "+dialect.LikeStr()+" ?", "%"+query.Query+"%")
