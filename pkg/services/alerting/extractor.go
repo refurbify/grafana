@@ -54,14 +54,17 @@ func (e *DashAlertExtractor) lookupDatasourceID(dsName string) (*models.DataSour
 	return nil, errors.New("Could not find datasource id for " + dsName)
 }
 
-func findPanelQueryByRefID(panel *simplejson.Json, refID string, networkId string) *simplejson.Json {
+func findPanelQueryByRefID(panel *simplejson.Json, refID string, variableMap map[string]string) *simplejson.Json {
 	for _, targetsObj := range panel.Get("targets").MustArray() {
 		target := simplejson.NewFromAny(targetsObj)
 
-		if target.Get("rawSql").MustString() != networkId {
+		if target.Get("rawSql").MustString() != "" {
 			rawSQL := target.Get("rawSql").MustString()
 			fmt.Println(rawSQL)
-			rawSQL = strings.Replace(rawSQL, "$network_id", networkId, -1)
+			for key, val := range variableMap {
+				rawSQL = strings.Replace(rawSQL, "$"+key, val, -1)
+			}
+
 			fmt.Println("after change ============= \n")
 			fmt.Println(rawSQL)
 			target.Set("rawSql", rawSQL)
@@ -85,8 +88,46 @@ func copyJSON(in *simplejson.Json) (*simplejson.Json, error) {
 
 func (e *DashAlertExtractor) getAlertFromPanels(jsonWithPanels *simplejson.Json, validateAlertFunc func(*models.Alert) bool) ([]*models.Alert, error) {
 	alerts := make([]*models.Alert, 0)
-	//Fetching the varibles
-	//_, templates := range jsonWithPanels.Get("templates").MustArray()
+
+	// Code for creating variable map start
+	var variableMap map[string]string
+	variableMap = make(map[string]string)
+
+	//Fetching the variables
+	templates := jsonWithPanels.Get("templating")
+
+	for _, templateList := range templates.Get("list").MustArray() {
+		currentTemplateVar := simplejson.NewFromAny(templateList)
+		currentVariableValue := ""
+		if currentTemplateVar.Get("multi").MustBool() || currentTemplateVar.Get("includeAll").MustBool() {
+			variableString := ""
+			allFlag := 0
+			for _, optionValues := range currentTemplateVar.Get("options").MustArray() {
+				option := simplejson.NewFromAny(optionValues)
+				if option.Get("value").MustString() == "$__all" && option.Get("selected").MustBool() {
+					allFlag = 1
+					continue
+				}
+
+				if allFlag == 1 {
+					variableString = variableString + "'" + option.Get("value").MustString() + "',"
+				} else if option.Get("selected").MustBool() {
+					variableString = variableString + "'" + option.Get("value").MustString() + "',"
+				}
+			}
+			currentVariableValue = strings.TrimSuffix(variableString, ",")
+		} else {
+			currentVariableValue = currentTemplateVar.Get("current").Get("value").MustString()
+		}
+		variableName := currentTemplateVar.Get("name").MustString()
+
+		variableMap[variableName] = currentVariableValue
+		for key, value := range variableMap {
+			fmt.Println("----------------MAP-------------------- \n")
+			fmt.Println("Key:", key, "Value:", value)
+		}
+	}
+	// Code for variable map ends
 
 	for _, panelObj := range jsonWithPanels.Get("panels").MustArray() {
 		panel := simplejson.NewFromAny(panelObj)
@@ -151,13 +192,9 @@ func (e *DashAlertExtractor) getAlertFromPanels(jsonWithPanels *simplejson.Json,
 		for _, condition := range jsonAlert.Get("conditions").MustArray() {
 			jsonCondition := simplejson.NewFromAny(condition)
 
-			networkId := "13695bca-08b9-40bd-b4bc-6d89035ca6cb"
-
 			jsonQuery := jsonCondition.Get("query")
 			queryRefID := jsonQuery.Get("params").MustArray()[0].(string)
-			panelQuery := findPanelQueryByRefID(panel, queryRefID, networkId)
-
-			//panelQuery :=
+			panelQuery := findPanelQueryByRefID(panel, queryRefID, variableMap)
 
 			if panelQuery == nil {
 				reason := fmt.Sprintf("Alert on PanelId: %v refers to query(%s) that cannot be found", alert.PanelId, queryRefID)
