@@ -300,6 +300,11 @@ func dashboardSaveErrorToApiResponse(err error) Response {
 		return Error(400, err.Error(), nil)
 	}
 
+	//Clarity Changes
+	if validationErr, ok := err.(dashboards.ValidationError); ok {
+		return Error(422, validationErr.Error(), nil)
+	}
+
 	var validationErr alerting.ValidationError
 	if ok := errors.As(err, &validationErr); ok {
 		return Error(422, validationErr.Error(), nil)

@@ -212,6 +212,13 @@ type GetAlertStatesForDashboardQuery struct {
 	Result []*AlertStateInfoDTO
 }
 
+//Clarity Changes
+type GetAlertsByDashboardIdNew struct {
+	Id int64
+
+	Result []*Alert
+}
+
 type AlertListItemDTO struct {
 	Id             int64            `json:"id"`
 	DashboardId    int64            `json:"dashboardId"`
