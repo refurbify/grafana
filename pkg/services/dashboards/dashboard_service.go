@@ -1,6 +1,7 @@
 package dashboards
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -30,6 +31,20 @@ type DashboardProvisioningService interface {
 	GetProvisionedDashboardDataByDashboardID(DashboardId int64) (*models.DashboardProvisioning, error)
 	UnprovisionDashboard(dashboardId int64) error
 	DeleteProvisionedDashboard(dashboardId int64, orgId int64) error
+}
+
+//Clarity Changes
+type ValidationError struct {
+	Reason      string
+	Err         error
+	AlertID     int64
+	DashboardID int64
+	PanelID     int64
+}
+
+//Clarity Changes
+func (v ValidationError) Error() string {
+	return fmt.Sprintf(v.Reason)
 }
 
 // NewService factory for creating a new dashboard service
@@ -107,6 +122,11 @@ func (dr *dashboardServiceImpl) buildSaveDashboardCommand(dto *SaveDashboardDTO,
 	}
 
 	if err := validateDashboardRefreshInterval(dash); err != nil {
+		return nil, err
+	}
+
+	//Clarity Changes
+	if err := validateUserIdForAlerts(dash); err != nil {
 		return nil, err
 	}
 
@@ -382,4 +402,21 @@ func MockDashboardService(mock *FakeDashboardService) {
 	NewService = func() DashboardService {
 		return mock
 	}
+}
+
+//Clarity Changes
+func validateUserIdForAlerts(dash *models.Dashboard) error {
+	cmd := models.GetAlertsByDashboardIdNew{Id: dash.Id}
+	if err := bus.Dispatch(&cmd); err != nil {
+		return err
+	}
+
+	for _, alert := range cmd.Result {
+		if alert.UserId != dash.UpdatedBy {
+			err := "This user is not authorised to update the alerts"
+			return ValidationError{Reason: err}
+
+		}
+	}
+	return nil
 }

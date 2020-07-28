@@ -286,6 +286,11 @@ func dashboardSaveErrorToApiResponse(err error) Response {
 		return Error(403, err.Error(), err)
 	}
 
+	//Clarity Changes
+	if validationErr, ok := err.(dashboards.ValidationError); ok {
+		return Error(422, validationErr.Error(), nil)
+	}
+
 	if validationErr, ok := err.(alerting.ValidationError); ok {
 		return Error(422, validationErr.Error(), nil)
 	}

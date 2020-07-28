@@ -22,6 +22,7 @@ func init() {
 	bus.AddHandler("sql", GetAlertStatesForDashboard)
 	bus.AddHandler("sql", PauseAlert)
 	bus.AddHandler("sql", PauseAllAlerts)
+	bus.AddHandler("sql", GetAlertsByDashboardIdNew) //Clarity Changes
 }
 
 func GetAlertById(query *models.GetAlertByIdQuery) error {
@@ -35,6 +36,18 @@ func GetAlertById(query *models.GetAlertByIdQuery) error {
 	}
 
 	query.Result = &alert
+	return nil
+}
+
+//Clarity Changes
+func GetAlertsByDashboardIdNew(query *models.GetAlertsByDashboardIdNew) error {
+	var alerts []*models.Alert
+	err := x.SQL("select * from alert where dashboard_id = ?", query.Id).Find(&alerts)
+	if err != nil {
+		return fmt.Errorf("could not find alert")
+	}
+
+	query.Result = alerts
 	return nil
 }
 
