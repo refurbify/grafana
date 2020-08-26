@@ -1,13 +1,14 @@
-import React, { useCallback } from 'react';
-import { config } from 'app/core/config';
-import { css } from 'emotion';
-import { IconName, stylesFactory, Tab, TabContent, TabsBar } from '@grafana/ui';
-import { PanelEditorTab, PanelEditorTabId } from './types';
-import { DashboardModel } from '../../state';
-import { QueriesTab } from '../../panel_editor/QueriesTab';
-import { PanelModel } from '../../state/PanelModel';
-import { AlertTab } from 'app/features/alerting/AlertTab';
-import { TransformationsEditor } from '../TransformationsEditor/TransformationsEditor';
+import React, {useCallback} from 'react';
+import {config} from 'app/core/config';
+import {css} from 'emotion';
+import {IconName, stylesFactory, Tab, TabContent, TabsBar} from '@grafana/ui';
+import {PanelEditorTab, PanelEditorTabId} from './types';
+import {DashboardModel} from '../../state';
+import {QueriesTab} from '../../panel_editor/QueriesTab';
+import {PanelModel} from '../../state/PanelModel';
+import {AlertTab} from 'app/features/alerting/AlertTab';
+import {TransformationsEditor} from '../TransformationsEditor/TransformationsEditor';
+import {contextSrv} from 'app/core/services/context_srv';
 
 interface PanelEditorTabsProps {
   panel: PanelModel;
@@ -16,7 +17,7 @@ interface PanelEditorTabsProps {
   onChangeTab: (tab: PanelEditorTab) => void;
 }
 
-export const PanelEditorTabs: React.FC<PanelEditorTabsProps> = ({ panel, dashboard, tabs, onChangeTab }) => {
+export const PanelEditorTabs: React.FC<PanelEditorTabsProps> = ({panel, dashboard, tabs, onChangeTab}) => {
   const styles = getPanelEditorTabsStyles();
   const activeTab = tabs.find(item => item.active);
 
@@ -40,7 +41,33 @@ export const PanelEditorTabs: React.FC<PanelEditorTabsProps> = ({ panel, dashboa
   if (tabs.length === 0) {
     return null;
   }
-
+  if (contextSrv?.user?.orgRole === 'Editor') {
+    return (
+      <div className={styles.wrapper}>
+        <TabsBar className={styles.tabBar}>
+          {tabs.map(tab => {
+            if (tab.text === 'Alert') {
+              return (
+                <Tab
+                  key={tab.id}
+                  label={tab.text}
+                  active={true}
+                  onChangeTab={() => onChangeTab(tab)}
+                  icon={tab.icon as IconName}
+                  counter={getCounter(tab)}
+                />
+              );
+            } else {
+              return null;
+            }
+          })}
+        </TabsBar>
+        <TabContent className={styles.tabContent}>
+          {activeTab.id === PanelEditorTabId.Alert && <AlertTab panel={panel} dashboard={dashboard}/>}
+        </TabContent>
+      </div>
+    );
+  }
   return (
     <div className={styles.wrapper}>
       <TabsBar className={styles.tabBar}>

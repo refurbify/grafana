@@ -37,6 +37,7 @@ func GetAlertStatesForDashboard(c *models.ReqContext) Response {
 	query := models.GetAlertStatesForDashboardQuery{
 		OrgId:       c.OrgId,
 		DashboardId: c.QueryInt64("dashboardId"),
+		UserId:      c.SignedInUser.UserId,
 	}
 
 	if err := bus.Dispatch(&query); err != nil {

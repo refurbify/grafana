@@ -8,6 +8,7 @@ import (
 
 	"github.com/grafana/grafana/pkg/bus"
 	"github.com/grafana/grafana/pkg/models"
+	"github.com/grafana/grafana/pkg/services/dashboards"
 )
 
 // timeNow makes it possible to test usage of time
@@ -51,6 +52,19 @@ func GetAlertsByDashboardIdNew(query *models.GetAlertsByDashboardIdNew) error {
 	return nil
 }
 
+//Clarity Changes used to save multiple alerts
+//New Query to fetch alerts specific to the user,dashboard and panel
+func GetAlertForUser(dashboardId int64, panelId int64, userId int64, sess *DBSession) (error, *models.Alert) {
+	alert := models.Alert{}
+	has, err := x.SQL("select * from alert where  dashboard_id = ? and panel_id = ? and user_id = ?", dashboardId, panelId, userId).Get(&alert)
+	if !has {
+		return fmt.Errorf("alert does not exist"), nil
+	}
+	if err != nil {
+		return err, nil
+	}
+	return nil, &alert
+}
 func GetAllAlertQueryHandler(query *models.GetAllAlertsQuery) error {
 	var alerts []*models.Alert
 	err := x.SQL("select * from alert").Find(&alerts)
@@ -103,9 +117,13 @@ func HandleAlertsQuery(query *models.GetAlertsQuery) error {
 		FROM alert
 		INNER JOIN dashboard on dashboard.id = alert.dashboard_id `)
 
-	//Clarity
-	//builder.Write(`WHERE alert.org_id = ?`, query.OrgId)
-	builder.Write(`WHERE alert.user_id = ?`, query.UserId)
+	//Clarity Change to display user specific alerts on alert list panel
+	//if the user is Admin then display all the alerts
+	if query.User.OrgRole == models.ROLE_ADMIN {
+		builder.Write(`WHERE alert.org_id = ?`, query.OrgId)
+	} else {
+		builder.Write(`WHERE alert.user_id = ?`, query.UserId)
+	}
 
 	if len(strings.TrimSpace(query.Query)) > 0 {
 		builder.Write(" AND alert.name "+dialect.LikeStr()+" ?", "%"+query.Query+"%")
@@ -201,32 +219,26 @@ func SaveAlerts(cmd *models.SaveAlertsCommand) error {
 	})
 }
 
+//Clarity Change save alert per user functionality
+// Before creating/updating any alerts Check, if the alert(For that specific dashboard,user,panel) already exists in DB, yes then check if the user id is same
+//if yes then update the alert, else create a new one
 func updateAlerts(existingAlerts []*models.Alert, cmd *models.SaveAlertsCommand, sess *DBSession) error {
 	for _, alert := range cmd.Alerts {
 		update := false
+		userNotValid := false
 		var alertToUpdate *models.Alert
 
-		for _, k := range existingAlerts {
-			if alert.PanelId == k.PanelId {
-				update = true
-				alert.Id = k.Id
-				alertToUpdate = k
-				break
-			}
+		err, result := GetAlertForUser(alert.DashboardId, alert.PanelId, alert.UserId, sess)
+		if err != nil && err.Error() != "alert does not exist" {
+			return err
 		}
-
-		if update {
-			if alertToUpdate.ContainsUpdates(alert) {
-				alert.Updated = timeNow()
-				alert.State = alertToUpdate.State
-				sess.MustCols("message", "for")
-
-				_, err := sess.ID(alert.Id).Update(alert)
-				if err != nil {
-					return err
-				}
-
-				sqlog.Debug("Alert updated", "name", alert.Name, "id", alert.Id)
+		if result != nil {
+			if alert.UserId == result.UserId {
+				update = true
+				alert.Id = result.Id
+				alertToUpdate = result
+			} else {
+				userNotValid = true
 			}
 		} else {
 			alert.Updated = timeNow()
@@ -240,6 +252,26 @@ func updateAlerts(existingAlerts []*models.Alert, cmd *models.SaveAlertsCommand,
 			}
 
 			sqlog.Debug("Alert inserted", "name", alert.Name, "id", alert.Id)
+			return nil
+		}
+		if update {
+			if alertToUpdate.ContainsUpdates(alert) {
+				alert.Updated = timeNow()
+				alert.State = alertToUpdate.State
+				sess.MustCols("message", "for")
+
+				_, err := sess.ID(alert.Id).Update(alert)
+				if err != nil {
+					return err
+				}
+
+				sqlog.Debug("Alert updated", "name", alert.Name, "id", alert.Id)
+				return nil
+			}
+		}
+		if userNotValid {
+			err := "This user is not authorised to update the alerts"
+			return dashboards.ValidationError{Reason: err}
 		}
 		tags := alert.GetTagsFromSettings()
 		if _, err := sess.Exec("DELETE FROM alert_rule_tag WHERE alert_id = ?", alert.Id); err != nil {
@@ -264,19 +296,19 @@ func updateAlerts(existingAlerts []*models.Alert, cmd *models.SaveAlertsCommand,
 func deleteMissingAlerts(alerts []*models.Alert, cmd *models.SaveAlertsCommand, sess *DBSession) error {
 	for _, missingAlert := range alerts {
 		missing := true
-
 		for _, k := range cmd.Alerts {
 			if missingAlert.PanelId == k.PanelId {
 				missing = false
 				break
 			}
 		}
-
 		if missing {
-			if err := deleteAlertByIdInternal(missingAlert.Id, "Removed from dashboard", sess); err != nil {
-				// No use trying to delete more, since we're in a transaction and it will be
-				// rolled back on error.
-				return err
+			if missingAlert.UserId == cmd.UserId { //Clarity Change to delete only current alert for the user and not all the alerts
+				if err := deleteAlertByIdInternal(missingAlert.Id, "Removed from dashboard", sess); err != nil {
+					// No use trying to delete more, since we're in a transaction and it will be
+					// rolled back on error.
+					return err
+				}
 			}
 		}
 	}
@@ -394,10 +426,10 @@ func GetAlertStatesForDashboard(query *models.GetAlertStatesForDashboardQuery) e
 	                state,
 	                new_state_date
 	                FROM alert
-	                WHERE org_id = ? AND dashboard_id = ?`
+	                WHERE org_id = ? AND dashboard_id = ? AND user_id = ?`
 
 	query.Result = make([]*models.AlertStateInfoDTO, 0)
-	err := x.SQL(rawSql, query.OrgId, query.DashboardId).Find(&query.Result)
+	err := x.SQL(rawSql, query.OrgId, query.DashboardId, query.UserId).Find(&query.Result)
 
 	return err
 }

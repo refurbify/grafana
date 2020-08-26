@@ -21,17 +21,18 @@ import { CoreEvents, LocationState } from 'app/types';
 import { calculatePanelSize } from './utils';
 import { initPanelEditor, panelEditorCleanUp, updatePanelEditorUIState } from './state/actions';
 import { PanelEditorUIState, setDiscardChanges } from './state/reducers';
-import { getPanelEditorTabs } from './state/selectors';
-import { getPanelStateById } from '../../state/selectors';
-import { OptionsPaneContent } from './OptionsPaneContent';
-import { DashNavButton } from 'app/features/dashboard/components/DashNav/DashNavButton';
-import { VariableModel } from 'app/features/variables/types';
-import { getVariables } from 'app/features/variables/state/selectors';
-import { SubMenuItems } from 'app/features/dashboard/components/SubMenu/SubMenuItems';
-import { BackButton } from 'app/core/components/BackButton/BackButton';
-import { appEvents } from 'app/core/core';
-import { SaveDashboardModalProxy } from '../SaveDashboard/SaveDashboardModalProxy';
-import { selectors } from '@grafana/e2e-selectors';
+import {getPanelEditorTabs} from './state/selectors';
+import {getPanelStateById} from '../../state/selectors';
+import {OptionsPaneContent} from './OptionsPaneContent';
+import {DashNavButton} from 'app/features/dashboard/components/DashNav/DashNavButton';
+import {VariableModel} from 'app/features/variables/types';
+import {getVariables} from 'app/features/variables/state/selectors';
+import {SubMenuItems} from 'app/features/dashboard/components/SubMenu/SubMenuItems';
+import {BackButton} from 'app/core/components/BackButton/BackButton';
+import {appEvents} from 'app/core/core';
+import {SaveDashboardModalProxy} from '../SaveDashboard/SaveDashboardModalProxy';
+import {selectors} from '@grafana/e2e-selectors';
+import {contextSrv} from 'app/core/services/context_srv';
 
 interface OwnProps {
   dashboard: DashboardModel;
@@ -282,12 +283,14 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
   }
 
   renderOptionsPane() {
-    const { plugin, dashboard, panel, uiState } = this.props;
+    const {plugin, dashboard, panel, uiState} = this.props;
 
     if (!plugin) {
-      return <div />;
+      return <div/>;
     }
-
+    if (contextSrv?.user?.orgRole === 'Editor') {
+      return <div/>;
+    }
     return (
       <OptionsPaneContent
         plugin={plugin}
