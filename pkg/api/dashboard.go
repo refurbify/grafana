@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path"
-	"path/filepath"
-
 	"github.com/grafana/grafana/pkg/models"
 	"github.com/grafana/grafana/pkg/services/alerting"
 	"github.com/grafana/grafana/pkg/services/dashboards"
+	"os"
+	"path"
+	"path/filepath"
 
 	"github.com/grafana/grafana/pkg/api/dtos"
 	"github.com/grafana/grafana/pkg/bus"
@@ -128,15 +127,41 @@ func (hs *HTTPServer) GetDashboard(c *models.ReqContext) Response {
 			hs.log.Warn("Failed to create ProvisionedExternalId", "err", err)
 		}
 	}
-
 	// make sure db version is in sync with json model version
 	dash.Data.Set("version", dash.Version)
-
 	dto := dtos.DashboardFullWithMeta{
 		Dashboard: dash.Data,
 		Meta:      meta,
 	}
-
+	//Clarity changes to retrieve user specific alerts on the dashboard.
+	//This change will fetch alerts from the alert table, rather than the dashboard table
+	//And re-populate the dashboard json with these alerts.
+	query := models.GetAlertsByDashboardIdNew{
+		Id: dash.Id,
+	}
+	if err := bus.Dispatch(&query); err != nil {
+		return Error(500, "Failed to fetch alerts", err)
+	}
+	var panel *simplejson.Json
+	var newPanel []*simplejson.Json
+	var isAlertSet bool
+	for _, panelObj := range dash.Data.Get("panels").MustArray() {
+		panel = simplejson.NewFromAny(panelObj)
+		isAlertSet = false
+		for _, alert := range query.Result {
+			if alert.PanelId == panel.Get("id").MustInt64() && alert.UserId == c.UserId {
+				panel.Set("alert", alert.Settings)
+				newPanel = append(newPanel, panel)
+				isAlertSet = true
+				break
+			}
+		}
+		if isAlertSet == false {
+			panel.Del("alert")
+			newPanel = append(newPanel, panel)
+		}
+	}
+	dto.Dashboard.Set("panels", newPanel)
 	c.TimeRequest(metrics.MApiDashboardGet)
 	return JSON(200, dto)
 }

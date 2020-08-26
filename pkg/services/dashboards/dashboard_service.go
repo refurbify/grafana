@@ -125,11 +125,6 @@ func (dr *dashboardServiceImpl) buildSaveDashboardCommand(dto *SaveDashboardDTO,
 		return nil, err
 	}
 
-	//Clarity Changes
-	if err := validateUserIdForAlerts(dash); err != nil {
-		return nil, err
-	}
-
 	if validateAlerts {
 		validateAlertsCmd := models.ValidateDashboardAlertsCommand{
 			OrgId:     dto.OrgId,
@@ -296,6 +291,7 @@ func (dr *dashboardServiceImpl) SaveFolderForProvisionedDashboards(dto *SaveDash
 	return cmd.Result, nil
 }
 
+//If the editor is performing save then Only Alert will be saved and not the dashboard.
 func (dr *dashboardServiceImpl) SaveDashboard(dto *SaveDashboardDTO, allowUiUpdate bool) (*models.Dashboard, error) {
 	if err := validateDashboardRefreshInterval(dto.Dashboard); err != nil {
 		dr.log.Warn("Changing refresh interval for imported dashboard to minimum refresh interval", "dashboardUid", dto.Dashboard.Uid, "dashboardTitle", dto.Dashboard.Title, "minRefreshInterval", setting.MinRefreshInterval)
@@ -312,9 +308,11 @@ func (dr *dashboardServiceImpl) SaveDashboard(dto *SaveDashboardDTO, allowUiUpda
 		return nil, err
 	}
 
-	err = dr.updateAlerting(cmd, dto)
-	if err != nil {
-		return nil, err
+	if dto.User.OrgRole == "Editor" {
+		err = dr.updateAlerting(cmd, dto)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return cmd.Result, nil

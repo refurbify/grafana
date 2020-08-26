@@ -9,6 +9,9 @@ import { DashboardModel, PanelModel } from '../../state';
 import { CoreEvents } from 'app/types';
 import { PanelEditorTab, PanelEditorTabId } from './types';
 
+// Clarity Changes
+import { contextSrv } from 'app/core/services/context_srv';
+
 interface PanelEditorTabsProps {
   panel: PanelModel;
   dashboard: DashboardModel;
@@ -56,6 +59,35 @@ export class PanelEditorTabs extends PureComponent<PanelEditorTabsProps> {
 
     if (tabs.length === 0) {
       return null;
+    }
+
+    // Clarity Changes
+    if (contextSrv?.user?.orgRole === 'Editor') {
+      return (
+        <div className={styles.wrapper}>
+          <TabsBar className={styles.tabBar}>
+            {tabs.map(tab => {
+              if (tab.text === 'Alert') {
+                return (
+                  <Tab
+                    key={tab.id}
+                    label={tab.text}
+                    active={true}
+                    onChangeTab={() => onChangeTab(tab)}
+                    icon={tab.icon as IconName}
+                    counter={this.getCounter(tab)}
+                  />
+                );
+              } else {
+                return null;
+              }
+            })}
+          </TabsBar>
+          <TabContent className={styles.tabContent}>
+            {activeTab.id === PanelEditorTabId.Alert && <AlertTab panel={panel} dashboard={dashboard} />}
+          </TabContent>
+        </div>
+      );
     }
 
     return (

@@ -208,6 +208,7 @@ type GetAlertByIdQuery struct {
 type GetAlertStatesForDashboardQuery struct {
 	OrgId       int64
 	DashboardId int64
+	UserId      int64 //Clarity changes to retrieve user specific alert states and display on panel as an alert status indicator
 
 	Result []*AlertStateInfoDTO
 }

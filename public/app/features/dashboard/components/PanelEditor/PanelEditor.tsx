@@ -37,6 +37,9 @@ import { DisplayMode, displayModes, PanelEditorTab } from './types';
 import { VariableModel } from 'app/features/variables/types';
 import { DashboardModel, PanelModel } from '../../state';
 
+// Clarity Changes
+import {contextSrv} from 'app/core/services/context_srv';
+
 interface OwnProps {
   dashboard: DashboardModel;
   sourcePanel: PanelModel;
@@ -324,6 +327,11 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
     const { plugin, dashboard, panel } = this.props;
 
     if (!plugin) {
+      return <div />;
+    }
+
+    // Clarity Changes
+    if (contextSrv?.user?.orgRole === 'Editor') {
       return <div />;
     }
 
