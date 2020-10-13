@@ -139,14 +139,14 @@ interface UniqueCount extends MetricAggregationWithField, MetricAggregationWithM
 interface RawDocument extends MetricAggregationWithSettings {
   type: 'raw_document';
   settings?: {
-    size?: number;
+    size?: string;
   };
 }
 
 interface RawData extends MetricAggregationWithSettings {
   type: 'raw_data';
   settings?: {
-    size?: number;
+    size?: string;
   };
 }
 
