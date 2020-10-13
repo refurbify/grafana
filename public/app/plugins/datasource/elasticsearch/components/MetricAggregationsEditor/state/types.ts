@@ -104,6 +104,21 @@ interface Min
   };
 }
 
+type ExtendedStatType =
+  | 'avg'
+  | 'min'
+  | 'max'
+  | 'sum'
+  | 'count'
+  | 'std_deviation'
+  | 'std_deviation_bounds_upper'
+  | 'std_deviation_bounds_lower';
+export interface ExtendedStat {
+  text: string;
+  value: ExtendedStatType;
+  default: boolean;
+}
+
 interface ExtendedStats
   extends MetricAggregationWithField,
     MetricAggregationWithMissingSupport,
@@ -112,8 +127,8 @@ interface ExtendedStats
   settings?: {
     script?: string;
     missing?: string;
-    // TODO: Add other settings here
-  };
+    sigma?: string;
+  } & { [P in ExtendedStatType]?: boolean };
 }
 
 interface Percentiles
@@ -214,8 +229,7 @@ export type MetricAggregation =
  */
 export const isMetricAggregationWithField = (
   metric: BaseMetricAggregation | MetricAggregationWithField
-): metric is MetricAggregationWithField =>
-  metricAggregationConfig[metric.type].requiresField || metricAggregationConfig[metric.type].isPipelineAgg;
+): metric is MetricAggregationWithField => metricAggregationConfig[metric.type].requiresField;
 
 export const isPipelineAggregation = (
   metric: BaseMetricAggregation | PipelineMetricAggregation
