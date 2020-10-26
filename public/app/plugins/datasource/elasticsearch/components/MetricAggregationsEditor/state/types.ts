@@ -1,4 +1,5 @@
 import { Action } from '../../../hooks/useReducerCallback';
+import { SettingKeyOf } from '../../types';
 import { metricAggregationConfig } from '../utils';
 
 export const ADD_METRIC = '@metrics/add';
@@ -253,8 +254,6 @@ export type MetricAggregationWithSettings =
 export type MetricAggregationWithMeta = ExtendedStats;
 
 export type MetricAggregation = Count | Logs | PipelineMetricAggregation | MetricAggregationWithSettings;
-
-export type SettingKeyOf<T extends MetricAggregationWithSettings> = Extract<keyof NonNullable<T['settings']>, string>;
 
 /**
  * Checks if `metric` requires a field (either referring to a document or another aggregation)
