@@ -161,7 +161,7 @@ export const metricAggregationConfig: MetricsConfiguration = {
     isPipelineAgg: false,
     supportsMissing: false,
     supportsMultipleBucketPaths: false,
-    hasSettings: true,
+    hasSettings: false,
     supportsInlineScript: false,
     hasMeta: false,
   },
