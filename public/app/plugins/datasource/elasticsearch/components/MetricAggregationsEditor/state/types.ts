@@ -103,7 +103,7 @@ type ExtendedStatMetaType =
   | 'std_deviation_bounds_upper'
   | 'std_deviation_bounds_lower';
 export interface ExtendedStat {
-  text: string;
+  label: string;
   value: ExtendedStatMetaType;
   default: boolean;
 }
@@ -131,7 +131,7 @@ interface Percentiles extends MetricAggregationWithField, MetricAggregationWithI
 
 export interface UniqueCount extends MetricAggregationWithField {
   type: 'cardinality';
-  settings: {
+  settings?: {
     precision_threshold?: string;
     missing?: string;
   };
