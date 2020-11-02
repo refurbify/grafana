@@ -26,6 +26,11 @@ const toOption = (metric: MetricAggregation) => ({
   value: metric.type,
 });
 
+const toSelectableValue = (value: string): SelectableValue<string> => ({
+  label: value,
+  value,
+});
+
 interface Props {
   value: MetricAggregation;
 }
@@ -58,7 +63,7 @@ const getTypeOptions = (
 };
 
 export const MetricEditor: FunctionComponent<Props> = ({ value }) => {
-  const styles = getStyles(useTheme(), value.hide);
+  const styles = getStyles(useTheme(), !!value.hide);
   const datasource = useDatasource();
   const query = useQuery();
   const dispatch = useDispatch<MetricAggregationAction>();
@@ -68,11 +73,16 @@ export const MetricEditor: FunctionComponent<Props> = ({ value }) => {
     query.metrics!.findIndex(m => m.id === value.id)
   );
 
-  const getFields = () => {
-    if (value.type === 'cardinality') {
-      return datasource.getFields();
-    }
-    return datasource.getFields('number');
+  // FIXME: This could be common with the one in BucketAggregationEditor
+  const getFields = async () => {
+    const get = () => {
+      if (value.type === 'cardinality') {
+        return datasource.getFields();
+      }
+      return datasource.getFields('number');
+    };
+
+    return (await get()).map(toSelectableValue);
   };
 
   return (
@@ -107,7 +117,7 @@ export const MetricEditor: FunctionComponent<Props> = ({ value }) => {
 
       {isMetricAggregationWithSettings(value) && <SettingsEditor metric={value} previousMetrics={previousMetrics} />}
 
-      <ToggleVisibilityButton onClick={() => dispatch(toggleMetricVisibility(value.id))} hide={value.hide} />
+      <ToggleVisibilityButton onClick={() => dispatch(toggleMetricVisibility(value.id))} hide={!!value.hide} />
     </QueryEditorRow>
   );
 };
