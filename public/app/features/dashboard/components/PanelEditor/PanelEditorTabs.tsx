@@ -1,14 +1,14 @@
-import React, {useCallback} from 'react';
-import {config} from 'app/core/config';
-import {css} from 'emotion';
-import {IconName, stylesFactory, Tab, TabContent, TabsBar} from '@grafana/ui';
-import {PanelEditorTab, PanelEditorTabId} from './types';
-import {DashboardModel} from '../../state';
-import {QueriesTab} from '../../panel_editor/QueriesTab';
-import {PanelModel} from '../../state/PanelModel';
-import {AlertTab} from 'app/features/alerting/AlertTab';
-import {TransformationsEditor} from '../TransformationsEditor/TransformationsEditor';
-import {contextSrv} from 'app/core/services/context_srv';
+import React, { PureComponent, useCallback } from 'react';
+import { config } from 'app/core/config';
+import { css } from 'emotion';
+import { IconName, stylesFactory, Tab, TabContent, TabsBar } from '@grafana/ui';
+import { QueriesTab } from '../../panel_editor/QueriesTab';
+import { AlertTab } from 'app/features/alerting/AlertTab';
+import { TransformationsEditor } from '../TransformationsEditor/TransformationsEditor';
+import { DashboardModel, PanelModel } from '../../state';
+import { CoreEvents } from 'app/types';
+import { PanelEditorTab, PanelEditorTabId } from './types';
+import { contextSrv } from 'app/core/services/context_srv';
 
 interface PanelEditorTabsProps {
   panel: PanelModel;
@@ -21,24 +21,29 @@ export const PanelEditorTabs: React.FC<PanelEditorTabsProps> = ({panel, dashboar
   const styles = getPanelEditorTabsStyles();
   const activeTab = tabs.find(item => item.active);
 
-  const getCounter = useCallback(
-    (tab: PanelEditorTab) => {
-      switch (tab.id) {
-        case PanelEditorTabId.Query:
-          return panel.targets.length;
-        case PanelEditorTabId.Alert:
-          return panel.alert ? 1 : 0;
-        case PanelEditorTabId.Transform:
-          const transformations = panel.getTransformations() ?? [];
-          return transformations.length;
-      }
+  componentWillUnmount() {
+    const { panel } = this.props;
+    panel.off(CoreEvents.queryChanged, this.triggerForceUpdate);
+    panel.off(CoreEvents.transformationChanged, this.triggerForceUpdate);
+  }
 
-      return null;
-    },
-    [panel]
-  );
+  triggerForceUpdate = () => {
+    this.forceUpdate();
+  };
 
-  if (tabs.length === 0) {
+  getCounter = (tab: PanelEditorTab) => {
+    const { panel } = this.props;
+
+    switch (tab.id) {
+      case PanelEditorTabId.Query:
+        return panel.targets.length;
+      case PanelEditorTabId.Alert:
+        return panel.alert ? 1 : 0;
+      case PanelEditorTabId.Transform:
+        const transformations = panel.getTransformations() ?? [];
+        return transformations.length;
+    }
+
     return null;
   }
   if (contextSrv?.user?.orgRole === 'Editor') {

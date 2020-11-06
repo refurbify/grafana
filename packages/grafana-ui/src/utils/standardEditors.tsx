@@ -17,6 +17,9 @@ import {
   ValueMappingFieldConfigSettings,
   valueMappingsOverrideProcessor,
   ThresholdsMode,
+  identityOverrideProcessor,
+  TimeZone,
+  FieldColor,
 } from '@grafana/data';
 
 import { Switch } from '../components/Switch/Switch';
@@ -26,12 +29,14 @@ import {
   StringValueEditor,
   StringArrayEditor,
   SelectValueEditor,
+  TimeZonePicker,
 } from '../components';
 import { ValueMappingsValueEditor } from '../components/OptionsUI/mappings';
 import { ThresholdsValueEditor } from '../components/OptionsUI/thresholds';
 import { UnitValueEditor } from '../components/OptionsUI/units';
 import { DataLinksValueEditor } from '../components/OptionsUI/links';
 import { ColorValueEditor } from '../components/OptionsUI/color';
+import { FieldColorEditor } from '../components/OptionsUI/fieldColor';
 import { StatsPickerEditor } from '../components/OptionsUI/stats';
 
 /**
@@ -144,7 +149,7 @@ export const getStandardFieldConfigs = () => {
         { value: 80, color: 'red' },
       ],
     },
-    shouldApply: field => field.type === FieldType.number,
+    shouldApply: () => true,
     category: ['Thresholds'],
     getItemsCount: value => (value ? value.steps.length : 0),
   };
@@ -153,13 +158,14 @@ export const getStandardFieldConfigs = () => {
     id: 'mappings',
     path: 'mappings',
     name: 'Value mappings',
+    description: 'Modify the display text based on input value',
 
     editor: standardEditorsRegistry.get('mappings').editor as any,
     override: standardEditorsRegistry.get('mappings').editor as any,
     process: valueMappingsOverrideProcessor,
     settings: {},
     defaultValue: [],
-    shouldApply: field => field.type === FieldType.number,
+    shouldApply: () => true,
     category: ['Value mappings'],
     getItemsCount: (value?) => (value ? value.length : 0),
   };
@@ -197,22 +203,19 @@ export const getStandardFieldConfigs = () => {
     getItemsCount: value => (value ? value.length : 0),
   };
 
-  // const color: FieldConfigPropertyItem<any, string, StringFieldConfigSettings> = {
-  //   id: 'color',
-  //   path: 'color',
-  //   name: 'Color',
-  //   description: 'Customise color',
-  //   editor: standardEditorsRegistry.get('color').editor as any,
-  //   override: standardEditorsRegistry.get('color').editor as any,
-  //   process: identityOverrideProcessor,
-  //   settings: {
-  //     placeholder: '-',
-  //   },
-  //   shouldApply: () => true,
-  //   category: ['Color & thresholds'],
-  // };
+  const color: FieldConfigPropertyItem<any, FieldColor | undefined, {}> = {
+    id: 'color',
+    path: 'color',
+    name: 'Color scheme',
+    description: 'Select palette, gradient or single color',
+    editor: standardEditorsRegistry.get('fieldColor').editor as any,
+    override: standardEditorsRegistry.get('fieldColor').editor as any,
+    process: identityOverrideProcessor,
+    shouldApply: () => true,
+    category,
+  };
 
-  return [unit, min, max, decimals, displayName, noValue, thresholds, mappings, links];
+  return [unit, min, max, decimals, displayName, noValue, color, thresholds, mappings, links];
 };
 
 /**
@@ -286,7 +289,14 @@ export const getStandardOptionEditors = () => {
     id: 'color',
     name: 'Color',
     description: 'Allows color selection',
-    editor: ColorValueEditor as any,
+    editor: props => <ColorValueEditor value={props.value} onChange={props.onChange} />,
+  };
+
+  const fieldColor: StandardEditorsRegistryItem<FieldColor> = {
+    id: 'fieldColor',
+    name: 'Field Color',
+    description: 'Field color selection',
+    editor: FieldColorEditor as any,
   };
 
   const links: StandardEditorsRegistryItem<DataLink[]> = {
@@ -303,5 +313,27 @@ export const getStandardOptionEditors = () => {
     description: '',
   };
 
-  return [text, number, boolean, radio, select, unit, mappings, thresholds, links, color, statsPicker, strings];
+  const timeZone: StandardEditorsRegistryItem<TimeZone> = {
+    id: 'timezone',
+    name: 'Time Zone',
+    description: 'Time zone selection',
+    editor: TimeZonePicker as any,
+  };
+
+  return [
+    text,
+    number,
+    boolean,
+    radio,
+    select,
+    unit,
+    mappings,
+    thresholds,
+    links,
+    statsPicker,
+    strings,
+    timeZone,
+    fieldColor,
+    color,
+  ];
 };

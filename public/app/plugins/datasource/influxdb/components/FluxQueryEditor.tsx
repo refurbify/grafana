@@ -1,20 +1,27 @@
-import React, { Component } from 'react';
+import React, { PureComponent } from 'react';
 import coreModule from 'app/core/core_module';
 import { InfluxQuery } from '../types';
-import { SelectableValue } from '@grafana/data';
-import { InlineFormLabel, LinkButton, Segment, TextArea } from '@grafana/ui';
+import { SelectableValue, QueryEditorProps } from '@grafana/data';
+import { cx, css } from 'emotion';
+import {
+  InlineFormLabel,
+  LinkButton,
+  Segment,
+  CodeEditor,
+  CodeEditorSuggestionItem,
+  CodeEditorSuggestionItemKind,
+} from '@grafana/ui';
+import { getTemplateSrv } from '@grafana/runtime';
+import InfluxDatasource from '../datasource';
 
-interface Props {
-  target: InfluxQuery;
-  change: (target: InfluxQuery) => void;
-  refresh: () => void;
-}
+// @ts-ignore -- complicated since the datasource is not really reactified yet!
+type Props = QueryEditorProps<InfluxDatasource, InfluxQuery>;
 
 const samples: Array<SelectableValue<string>> = [
-  { label: 'Show buckets', description: 'List the avaliable buckets (table)', value: 'buckets()' },
+  { label: 'Show buckets', description: 'List the available buckets (table)', value: 'buckets()' },
   {
     label: 'Simple query',
-    description: 'filter by measurment and field',
+    description: 'filter by measurement and field',
     value: `from(bucket: "db/rp")
   |> range(start: v.timeRangeStart, stop:v.timeRangeStop)
   |> filter(fn: (r) =>
@@ -51,7 +58,7 @@ v1.measurements(bucket: v.bucket)`,
     label: 'Schema Exploration: (fields)',
     description: 'Return every possible key in a single table',
     value: `from(bucket: v.bucket)
-  |> range(start: v.timeRangeStart, stop:timeRangeStop)
+  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)
   |> keys()
   |> keep(columns: ["_value"])
   |> group()
@@ -76,58 +83,122 @@ v1.tagValues(
   },
 ];
 
-export class FluxQueryEditor extends Component<Props> {
-  onFluxQueryChange = (e: any) => {
-    const { target, change } = this.props;
-    change({ ...target, query: e.currentTarget.value });
-  };
-
-  onFluxBlur = (e: any) => {
-    this.props.refresh();
+export class FluxQueryEditor extends PureComponent<Props> {
+  onFluxQueryChange = (query: string) => {
+    this.props.onChange({ ...this.props.query, query });
+    this.props.onRunQuery();
   };
 
   onSampleChange = (val: SelectableValue<string>) => {
-    this.props.change({
-      ...this.props.target,
+    this.props.onChange({
+      ...this.props.query,
       query: val.value!,
     });
 
     // Angular HACK: Since the target does not actually change!
     this.forceUpdate();
-    this.props.refresh();
+    this.props.onRunQuery();
+  };
+
+  getSuggestions = (): CodeEditorSuggestionItem[] => {
+    const sugs: CodeEditorSuggestionItem[] = [
+      {
+        label: 'v.timeRangeStart',
+        kind: CodeEditorSuggestionItemKind.Property,
+        detail: 'The start time',
+      },
+      {
+        label: 'v.timeRangeStop',
+        kind: CodeEditorSuggestionItemKind.Property,
+        detail: 'The stop time',
+      },
+      {
+        label: 'v.windowPeriod',
+        kind: CodeEditorSuggestionItemKind.Property,
+        detail: 'based on max data points',
+      },
+      {
+        label: 'v.defaultBucket',
+        kind: CodeEditorSuggestionItemKind.Property,
+        detail: 'bucket configured in the datsource',
+      },
+      {
+        label: 'v.organization',
+        kind: CodeEditorSuggestionItemKind.Property,
+        detail: 'org configured for the datsource',
+      },
+    ];
+
+    const templateSrv = getTemplateSrv();
+    templateSrv.getVariables().forEach(variable => {
+      const label = '${' + variable.name + '}';
+      let val = templateSrv.replace(label);
+      if (val === label) {
+        val = '';
+      }
+      sugs.push({
+        label,
+        kind: CodeEditorSuggestionItemKind.Text,
+        detail: `(Template Variable) ${val}`,
+      });
+    });
+
+    return sugs;
+  };
+
+  // For some reason in angular, when this component gets re-mounted, the width
+  // is not set properly.  This forces the layout shortly after mount so that it
+  // displays OK.  Note: this is not an issue when used directly in react
+  editorDidMountCallbackHack = (editor: any) => {
+    setTimeout(() => editor.layout(), 100);
   };
 
   render() {
-    const { target } = this.props;
+    const { query } = this.props;
+
+    const helpTooltip = (
+      <div>
+        Type: <i>ctrl+space</i> to show template variable suggestions <br />
+        Many queries can be copied from chronograph
+      </div>
+    );
+
     return (
       <>
-        <div className="gf-form">
-          <TextArea
-            value={target.query || ''}
-            onChange={this.onFluxQueryChange}
-            onBlur={this.onFluxBlur}
-            placeholder="Flux query"
-            rows={10}
-          />
-        </div>
-        <div className="gf-form-inline">
-          <div className="gf-form">
-            <InlineFormLabel width={5} tooltip="Queries can be copied from chronograph">
-              Help
-            </InlineFormLabel>
-            <Segment options={samples} value="Sample Query" onChange={this.onSampleChange} />
-            <LinkButton
-              icon="external-link-alt"
-              variant="secondary"
-              target="blank"
-              href="https://docs.influxdata.com/flux/latest/introduction/getting-started/"
-            >
-              Flux docs
-            </LinkButton>
-          </div>
+        <CodeEditor
+          height={'200px'}
+          language="sql"
+          value={query.query || ''}
+          onBlur={this.onFluxQueryChange}
+          onSave={this.onFluxQueryChange}
+          showMiniMap={false}
+          showLineNumbers={true}
+          getSuggestions={this.getSuggestions}
+          onEditorDidMount={this.editorDidMountCallbackHack}
+        />
+        <div
+          className={cx(
+            'gf-form-inline',
+            css`
+              margin-top: 6px;
+            `
+          )}
+        >
+          <LinkButton
+            icon="external-link-alt"
+            variant="secondary"
+            target="blank"
+            href="https://docs.influxdata.com/flux/latest/introduction/getting-started/"
+          >
+            Flux language syntax
+          </LinkButton>
+          <Segment options={samples} value="Sample Query" onChange={this.onSampleChange} />
           <div className="gf-form gf-form--grow">
             <div className="gf-form-label gf-form-label--grow"></div>
           </div>
+          <InlineFormLabel width={5} tooltip={helpTooltip}>
+            Help
+          </InlineFormLabel>
         </div>
       </>
     );
@@ -137,6 +208,6 @@ export class FluxQueryEditor extends Component<Props> {
 coreModule.directive('fluxQueryEditor', [
   'reactDirective',
   (reactDirective: any) => {
-    return reactDirective(FluxQueryEditor, ['target', 'change', 'refresh']);
+    return reactDirective(FluxQueryEditor, ['query', 'onChange', 'onRunQuery']);
   },
 ]);

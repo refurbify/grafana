@@ -1,3 +1,11 @@
+const applyFieldOverridesMock = jest.fn();
+
+jest.mock('@grafana/data', () => ({
+  __esModule: true,
+  ...(jest.requireActual('@grafana/data') as any),
+  applyFieldOverrides: applyFieldOverridesMock,
+}));
+
 import { PanelQueryRunner } from './PanelQueryRunner';
 // Importing this way to be able to spy on grafana/data
 import * as grafanaData from '@grafana/data';
@@ -10,7 +18,7 @@ import {
   ScopedVars,
 } from '@grafana/data';
 import { DashboardModel } from './index';
-import { setEchoSrv } from '@grafana/runtime';
+import { setDataSourceSrv, setEchoSrv } from '@grafana/runtime';
 import { Echo } from '../../../core/services/echo/Echo';
 
 jest.mock('app/core/services/backend_srv');
@@ -80,6 +88,11 @@ function describeQueryRunnerScenario(description: string, scenarioFn: ScenarioFn
         },
       ],
     };
+    setDataSourceSrv({
+      getDataSourceSettingsByUid() {
+        return {} as any;
+      },
+    } as any);
 
     beforeEach(async () => {
       setEchoSrv(new Echo());
@@ -126,6 +139,10 @@ function describeQueryRunnerScenario(description: string, scenarioFn: ScenarioFn
 }
 
 describe('PanelQueryRunner', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   describeQueryRunnerScenario('simple scenario', ctx => {
     it('should set requestId on request', async () => {
       expect(ctx.queryCalledWith?.requestId).toBe('Q100');
@@ -206,14 +223,12 @@ describe('PanelQueryRunner', () => {
     'field overrides',
     ctx => {
       it('should apply when field override options are set', async () => {
-        const spy = jest.spyOn(grafanaData, 'applyFieldOverrides');
-
         ctx.runner.getData({ withTransforms: true, withFieldConfig: true }).subscribe({
           next: (data: PanelData) => {
             return data;
           },
         });
-        expect(spy).toBeCalled();
+        expect(applyFieldOverridesMock).toBeCalled();
       });
     },
     {
@@ -226,6 +241,7 @@ describe('PanelQueryRunner', () => {
           overrides: [],
         },
         replaceVariables: v => v,
+        getDataSourceSettingsByUid: undefined as any,
         theme: {} as GrafanaTheme,
       }),
       getTransformations: () => undefined,
@@ -271,15 +287,13 @@ describe('PanelQueryRunner', () => {
       });
 
       it('should not apply field config when applyFieldConfig option is false', async () => {
-        const spy = jest.spyOn(grafanaData, 'applyFieldOverrides');
-        spy.mockClear();
         ctx.runner.getData({ withFieldConfig: false, withTransforms: true }).subscribe({
           next: (data: PanelData) => {
             return data;
           },
         });
 
-        expect(spy).not.toBeCalled();
+        expect(applyFieldOverridesMock).not.toBeCalled();
       });
     },
     {
@@ -292,6 +306,7 @@ describe('PanelQueryRunner', () => {
           overrides: [],
         },
         replaceVariables: v => v,
+        getDataSourceSettingsByUid: undefined as any,
         theme: {} as GrafanaTheme,
       }),
       // @ts-ignore
@@ -315,15 +330,13 @@ describe('PanelQueryRunner', () => {
       });
 
       it('should not apply field config when applyFieldConfig option is false', async () => {
-        const spy = jest.spyOn(grafanaData, 'applyFieldOverrides');
-        spy.mockClear();
         ctx.runner.getData({ withFieldConfig: false, withTransforms: true }).subscribe({
           next: (data: PanelData) => {
             return data;
           },
         });
 
-        expect(spy).not.toBeCalled();
+        expect(applyFieldOverridesMock).not.toBeCalled();
       });
     },
     {
@@ -336,6 +349,7 @@ describe('PanelQueryRunner', () => {
           overrides: [],
         },
         replaceVariables: v => v,
+        getDataSourceSettingsByUid: undefined as any,
         theme: {} as GrafanaTheme,
       }),
       // @ts-ignore

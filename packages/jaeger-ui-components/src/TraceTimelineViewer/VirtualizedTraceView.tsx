@@ -68,6 +68,7 @@ type TVirtualizedTraceViewOwnProps = {
   detailLogItemToggle: (spanID: string, log: TraceLog) => void;
   detailLogsToggle: (spanID: string) => void;
   detailWarningsToggle: (spanID: string) => void;
+  detailStackTracesToggle: (spanID: string) => void;
   detailReferencesToggle: (spanID: string) => void;
   detailProcessToggle: (spanID: string) => void;
   detailTagsToggle: (spanID: string) => void;
@@ -78,6 +79,9 @@ type TVirtualizedTraceViewOwnProps = {
   addHoverIndentGuideId: (spanID: string) => void;
   removeHoverIndentGuideId: (spanID: string) => void;
   theme: Theme;
+  createSpanLink?: (
+    span: TraceSpan
+  ) => { href: string; onClick?: (e: React.MouseEvent) => void; content: React.ReactNode };
 };
 
 type VirtualizedTraceViewProps = TVirtualizedTraceViewOwnProps & TExtractUiFindFromStateReturn & TTraceTimeline;
@@ -329,6 +333,7 @@ export class UnthemedVirtualizedTraceView extends React.Component<VirtualizedTra
       addHoverIndentGuideId,
       removeHoverIndentGuideId,
       theme,
+      createSpanLink,
     } = this.props;
     // to avert flow error
     if (!trace) {
@@ -378,6 +383,7 @@ export class UnthemedVirtualizedTraceView extends React.Component<VirtualizedTra
           hoverIndentGuideIds={hoverIndentGuideIds}
           addHoverIndentGuideId={addHoverIndentGuideId}
           removeHoverIndentGuideId={removeHoverIndentGuideId}
+          createSpanLink={createSpanLink}
         />
       </div>
     );
@@ -392,6 +398,7 @@ export class UnthemedVirtualizedTraceView extends React.Component<VirtualizedTra
       detailProcessToggle,
       detailReferencesToggle,
       detailWarningsToggle,
+      detailStackTracesToggle,
       detailStates,
       detailTagsToggle,
       detailToggle,
@@ -423,6 +430,7 @@ export class UnthemedVirtualizedTraceView extends React.Component<VirtualizedTra
           processToggle={detailProcessToggle}
           referencesToggle={detailReferencesToggle}
           warningsToggle={detailWarningsToggle}
+          stackTracesToggle={detailStackTracesToggle}
           span={span}
           tagsToggle={detailTagsToggle}
           traceStartTime={trace.startTime}

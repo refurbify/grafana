@@ -12,21 +12,23 @@ import { axesEditorComponent } from './axes_editor';
 import config from 'app/core/config';
 import TimeSeries from 'app/core/time_series2';
 import { getProcessedDataFrames } from 'app/features/dashboard/state/runRequest';
-import { getColorFromHexRgbOrName, PanelEvents, DataFrame, DataLink, VariableSuggestion } from '@grafana/data';
+import { PanelEvents, PanelPlugin, DataFrame, FieldConfigProperty, getColorForTheme } from '@grafana/data';
 
 import { GraphContextMenuCtrl } from './GraphContextMenuCtrl';
-import { getDataLinksVariableSuggestions } from 'app/features/panel/panellinks/link_srv';
+import { graphPanelMigrationHandler } from './GraphMigrations';
+import { DataWarning, GraphPanelOptions, GraphFieldConfig } from './types';
 
 import { auto } from 'angular';
 import { AnnotationsSrv } from 'app/features/annotations/all';
 import { CoreEvents } from 'app/types';
-import { DataWarning } from './types';
 import { getLocationSrv } from '@grafana/runtime';
 import { getDataTimeRange } from './utils';
 import { changePanelPlugin } from 'app/features/dashboard/state/actions';
 import { dispatch } from 'app/store/store';
+import { ThresholdMapper } from 'app/features/alerting/state/ThresholdMapper';
+import { getAnnotationsFromData } from 'app/features/annotations/standardAnnotationSupport';
 
-class GraphCtrl extends MetricsPanelCtrl {
+export class GraphCtrl extends MetricsPanelCtrl {
   static template = template;
 
   renderError: boolean;
@@ -43,7 +45,6 @@ class GraphCtrl extends MetricsPanelCtrl {
   subTabIndex: number;
   processor: DataProcessor;
   contextMenuCtrl: GraphContextMenuCtrl;
-  linkVariableSuggestions: VariableSuggestion[] = [];
 
   panelDefaults: any = {
     // datasource name, null = default datasource
@@ -137,7 +138,8 @@ class GraphCtrl extends MetricsPanelCtrl {
     thresholds: [],
     timeRegions: [],
     options: {
-      dataLinks: [],
+      // show/hide alert threshold lines and fill
+      alertThreshold: true,
     },
   };
 
@@ -161,7 +163,6 @@ class GraphCtrl extends MetricsPanelCtrl {
     this.events.on(PanelEvents.editModeInitialized, this.onInitEditMode.bind(this));
     this.events.on(PanelEvents.initPanelActions, this.onInitPanelActions.bind(this));
 
-    this.onDataLinksChange = this.onDataLinksChange.bind(this);
     this.annotationsPromise = Promise.resolve({ annotations: [] });
   }
 
@@ -172,7 +173,6 @@ class GraphCtrl extends MetricsPanelCtrl {
     this.addEditorTab('Legend', 'public/app/plugins/panel/graph/tab_legend.html');
     this.addEditorTab('Thresholds', 'public/app/plugins/panel/graph/tab_thresholds.html');
     this.addEditorTab('Time regions', 'public/app/plugins/panel/graph/tab_time_regions.html');
-    this.addEditorTab('Data links', 'public/app/plugins/panel/graph/tab_drilldown_links.html');
     this.subTabIndex = 0;
     this.hiddenSeriesTainted = false;
   }
@@ -221,8 +221,6 @@ class GraphCtrl extends MetricsPanelCtrl {
       range: this.range,
     });
 
-    this.linkVariableSuggestions = getDataLinksVariableSuggestions(data);
-
     this.dataWarning = this.getDataWarning();
 
     this.annotationsPromise.then(
@@ -235,6 +233,10 @@ class GraphCtrl extends MetricsPanelCtrl {
         // Add it to the seriesList so react can access it
         if (this.alertState) {
           (this.seriesList as any).alertState = this.alertState.state;
+        }
+
+        if (this.panelData!.annotations?.length) {
+          this.annotations = getAnnotationsFromData(this.panelData!.annotations!);
         }
 
         this.render(this.seriesList);
@@ -260,7 +262,6 @@ class GraphCtrl extends MetricsPanelCtrl {
               tip: 'Data exists, but is not timeseries',
               actionText: 'Switch to table view',
               action: () => {
-                console.log('Change from graph to table');
                 dispatch(changePanelPlugin(this.panel, 'table'));
               },
             };
@@ -274,35 +275,35 @@ class GraphCtrl extends MetricsPanelCtrl {
       };
     }
 
-    // Look for data points outside time range
+    // If any data is in range, do not return an error
     for (const series of this.seriesList) {
       if (!series.isOutsideRange) {
-        continue;
+        return undefined;
       }
-
-      const dataWarning: DataWarning = {
-        title: 'Data outside time range',
-        tip: 'Can be caused by timezone mismatch or missing time filter in query',
-      };
-
-      const range = getDataTimeRange(this.dataList);
-
-      if (range) {
-        dataWarning.actionText = 'Zoom to data';
-        dataWarning.action = () => {
-          getLocationSrv().update({
-            partial: true,
-            query: {
-              from: range.from,
-              to: range.to,
-            },
-          });
-        };
-      }
-
-      return dataWarning;
     }
-    return undefined;
+
+    // All data is outside the time range
+    const dataWarning: DataWarning = {
+      title: 'Data outside time range',
+      tip: 'Can be caused by timezone mismatch or missing time filter in query',
+    };
+
+    const range = getDataTimeRange(this.dataList);
+
+    if (range) {
+      dataWarning.actionText = 'Zoom to data';
+      dataWarning.action = () => {
+        getLocationSrv().update({
+          partial: true,
+          query: {
+            from: range.from,
+            to: range.to,
+          },
+        });
+      };
+    }
+
+    return dataWarning;
   }
 
   onRender() {
@@ -310,9 +311,12 @@ class GraphCtrl extends MetricsPanelCtrl {
       return;
     }
 
+    ThresholdMapper.alertToGraphThresholds(this.panel);
+
     for (const series of this.seriesList) {
       series.applySeriesOverrides(this.panel.seriesOverrides);
 
+      // Always use the configured field unit
       if (series.unit) {
         this.panel.yaxes[series.yaxis - 1].format = series.unit;
       }
@@ -323,7 +327,7 @@ class GraphCtrl extends MetricsPanelCtrl {
   }
 
   onColorChange = (series: any, color: string) => {
-    series.setColor(getColorFromHexRgbOrName(color, config.theme.type));
+    series.setColor(getColorForTheme(color, config.theme));
     this.panel.aliasColors[series.alias] = color;
     this.render();
   };
@@ -349,13 +353,6 @@ class GraphCtrl extends MetricsPanelCtrl {
     override.yaxis = info.yaxis;
     this.render();
   };
-
-  onDataLinksChange(dataLinks: DataLink[]) {
-    this.panel.updateOptions({
-      ...this.panel.options,
-      dataLinks,
-    });
-  }
 
   addSeriesOverride(override: any) {
     this.panel.seriesOverrides.push(override || {});
@@ -388,4 +385,16 @@ class GraphCtrl extends MetricsPanelCtrl {
   };
 }
 
-export { GraphCtrl, GraphCtrl as PanelCtrl };
+// Use new react style configuration
+export const plugin = new PanelPlugin<GraphPanelOptions, GraphFieldConfig>(null)
+  .useFieldConfig({
+    standardOptions: [
+      FieldConfigProperty.DisplayName,
+      FieldConfigProperty.Unit,
+      FieldConfigProperty.Links, // previously saved as dataLinks on options
+    ],
+  })
+  .setMigrationHandler(graphPanelMigrationHandler);
+
+// Use the angular ctrt rather than a react one
+plugin.angularPanelCtrl = GraphCtrl;

@@ -22,9 +22,11 @@ const (
 	DS_MSSQL         = "mssql"
 	DS_ACCESS_DIRECT = "direct"
 	DS_ACCESS_PROXY  = "proxy"
-	DS_STACKDRIVER   = "stackdriver"
-	DS_AZURE_MONITOR = "grafana-azure-monitor-datasource"
-	DS_LOKI          = "loki"
+	// Stackdriver was renamed Google Cloud monitoring 2020-05 but we keep
+	// "stackdriver" to avoid breaking changes in reporting.
+	DS_CLOUD_MONITORING = "stackdriver"
+	DS_AZURE_MONITOR    = "grafana-azure-monitor-datasource"
+	DS_LOKI             = "loki"
 )
 
 var (
@@ -40,29 +42,29 @@ var (
 type DsAccess string
 
 type DataSource struct {
-	Id      int64
-	OrgId   int64
-	Version int
+	Id      int64 `json:"id"`
+	OrgId   int64 `json:"orgId"`
+	Version int   `json:"version"`
 
-	Name              string
-	Type              string
-	Access            DsAccess
-	Url               string
-	Password          string
-	User              string
-	Database          string
-	BasicAuth         bool
-	BasicAuthUser     string
-	BasicAuthPassword string
-	WithCredentials   bool
-	IsDefault         bool
-	JsonData          *simplejson.Json
-	SecureJsonData    securejsondata.SecureJsonData
-	ReadOnly          bool
-	Uid               string
+	Name              string                        `json:"name"`
+	Type              string                        `json:"type"`
+	Access            DsAccess                      `json:"access"`
+	Url               string                        `json:"url"`
+	Password          string                        `json:"password"`
+	User              string                        `json:"user"`
+	Database          string                        `json:"database"`
+	BasicAuth         bool                          `json:"basicAuth"`
+	BasicAuthUser     string                        `json:"basicAuthUser"`
+	BasicAuthPassword string                        `json:"basicAuthPassword"`
+	WithCredentials   bool                          `json:"withCredentials"`
+	IsDefault         bool                          `json:"isDefault"`
+	JsonData          *simplejson.Json              `json:"jsonData"`
+	SecureJsonData    securejsondata.SecureJsonData `json:"secureJsonData"`
+	ReadOnly          bool                          `json:"readOnly"`
+	Uid               string                        `json:"uid"`
 
-	Created time.Time
-	Updated time.Time
+	Created time.Time `json:"created"`
+	Updated time.Time `json:"updated"`
 }
 
 // DecryptedBasicAuthPassword returns data source basic auth password in plain text. It uses either deprecated
@@ -97,7 +99,7 @@ var knownDatasourcePlugins = map[string]bool{
 	DS_POSTGRES:                              true,
 	DS_MYSQL:                                 true,
 	DS_MSSQL:                                 true,
-	DS_STACKDRIVER:                           true,
+	DS_CLOUD_MONITORING:                      true,
 	DS_AZURE_MONITOR:                         true,
 	DS_LOKI:                                  true,
 	"opennms":                                true,

@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/grafana/pkg/setting"
 	"github.com/grafana/grafana/pkg/util"
 
-	_ "github.com/denisenkom/go-mssqldb"
+	mssql "github.com/denisenkom/go-mssqldb"
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/models"
 	"github.com/grafana/grafana/pkg/tsdb"
@@ -29,7 +29,7 @@ func newMssqlQueryEndpoint(datasource *models.DataSource) (tsdb.TsdbQueryEndpoin
 	if err != nil {
 		return nil, err
 	}
-	if setting.Env == setting.DEV {
+	if setting.Env == setting.Dev {
 		logger.Debug("getEngine", "connection", cnnstr)
 	}
 
@@ -129,6 +129,13 @@ func (t *mssqlQueryResultTransformer) TransformQueryResult(columnTypes []*sql.Co
 					values[i] = v
 				} else {
 					t.log.Debug("Rows", "Error converting numeric to float", value)
+				}
+			case "UNIQUEIDENTIFIER":
+				uuid := &mssql.UniqueIdentifier{}
+				if err := uuid.Scan(value); err == nil {
+					values[i] = uuid.String()
+				} else {
+					t.log.Debug("Rows", "Error converting uniqueidentifier to string", value)
 				}
 			default:
 				t.log.Debug("Rows", "Unknown database type", columnTypes[i].DatabaseTypeName(), "value", value)

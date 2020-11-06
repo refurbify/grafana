@@ -1,10 +1,8 @@
-import { getDisplayProcessor } from './displayProcessor';
+import { getDisplayProcessor, getRawDisplayProcessor } from './displayProcessor';
 import { DisplayProcessor, DisplayValue } from '../types/displayValue';
 import { MappingType, ValueMapping } from '../types/valueMapping';
-import { Field, FieldConfig, FieldType, GrafanaTheme, Threshold, ThresholdsMode } from '../types';
-import { getScaleCalculator, sortThresholds } from './scale';
-import { ArrayVector } from '../vector';
-import { validateFieldConfig } from './fieldOverrides';
+import { FieldConfig, FieldType, ThresholdsMode } from '../types';
+import { systemDateFormats } from '../datetime';
 
 function getDisplayProcessorFromConfig(config: FieldConfig) {
   return getDisplayProcessor({
@@ -13,18 +11,6 @@ function getDisplayProcessorFromConfig(config: FieldConfig) {
       type: FieldType.number,
     },
   });
-}
-
-function getColorFromThreshold(value: number, steps: Threshold[], theme?: GrafanaTheme): string {
-  const field: Field = {
-    name: 'test',
-    config: { thresholds: { mode: ThresholdsMode.Absolute, steps: sortThresholds(steps) } },
-    type: FieldType.number,
-    values: new ArrayVector([]),
-  };
-  validateFieldConfig(field.config!);
-  const calc = getScaleCalculator(field, theme);
-  return calc(value).color!;
 }
 
 function assertSame(input: any, processors: DisplayProcessor[], match: DisplayValue) {
@@ -41,7 +27,7 @@ describe('Process simple display values', () => {
   // Don't test float values here since the decimal formatting changes
   const processors = [
     // Without options, this shortcuts to a much easier implementation
-    getDisplayProcessor(),
+    getDisplayProcessor({ field: { config: {} } }),
 
     // Add a simple option that is not used (uses a different base class)
     getDisplayProcessorFromConfig({ min: 0, max: 100 }),
@@ -103,31 +89,6 @@ describe('Process simple display values', () => {
   });
 });
 
-describe('Get color from threshold', () => {
-  it('should get first threshold color when only one threshold', () => {
-    const thresholds = [{ index: 0, value: -Infinity, color: '#7EB26D' }];
-    expect(getColorFromThreshold(49, thresholds)).toEqual('#7EB26D');
-  });
-
-  it('should get the threshold color if value is same as a threshold', () => {
-    const thresholds = [
-      { index: 2, value: 75, color: '#6ED0E0' },
-      { index: 1, value: 50, color: '#EAB839' },
-      { index: 0, value: -Infinity, color: '#7EB26D' },
-    ];
-    expect(getColorFromThreshold(50, thresholds)).toEqual('#EAB839');
-  });
-
-  it('should get the nearest threshold color between thresholds', () => {
-    const thresholds = [
-      { index: 2, value: 75, color: '#6ED0E0' },
-      { index: 1, value: 50, color: '#EAB839' },
-      { index: 0, value: -Infinity, color: '#7EB26D' },
-    ];
-    expect(getColorFromThreshold(55, thresholds)).toEqual('#EAB839');
-  });
-});
-
 describe('Format value', () => {
   it('should return if value isNaN', () => {
     const valueMappings: ValueMapping[] = [];
@@ -152,8 +113,8 @@ describe('Format value', () => {
 
   it('should return formatted value if there are no matching value mappings', () => {
     const valueMappings: ValueMapping[] = [
-      { id: 0, operator: '', text: 'elva', type: MappingType.ValueToText, value: '11' },
-      { id: 1, operator: '', text: '1-9', type: MappingType.RangeToText, from: '1', to: '9' },
+      { id: 0, text: 'elva', type: MappingType.ValueToText, value: '11' },
+      { id: 1, text: '1-9', type: MappingType.RangeToText, from: '1', to: '9' },
     ];
     const value = '10';
     const instance = getDisplayProcessorFromConfig({ decimals: 1, mappings: valueMappings });
@@ -186,8 +147,8 @@ describe('Format value', () => {
 
   it('should return mapped value if there are matching value mappings', () => {
     const valueMappings: ValueMapping[] = [
-      { id: 0, operator: '', text: '1-20', type: MappingType.RangeToText, from: '1', to: '20' },
-      { id: 1, operator: '', text: 'elva', type: MappingType.ValueToText, value: '11' },
+      { id: 0, text: '1-20', type: MappingType.RangeToText, from: '1', to: '20' },
+      { id: 1, text: 'elva', type: MappingType.ValueToText, value: '11' },
     ];
     const value = '11';
     const instance = getDisplayProcessorFromConfig({ decimals: 1, mappings: valueMappings });
@@ -196,9 +157,7 @@ describe('Format value', () => {
   });
 
   it('should return mapped value and leave numeric value in tact if value mapping maps to empty string', () => {
-    const valueMappings: ValueMapping[] = [
-      { id: 1, operator: '', text: '', type: MappingType.ValueToText, value: '1' },
-    ];
+    const valueMappings: ValueMapping[] = [{ id: 1, text: '', type: MappingType.ValueToText, value: '1' }];
     const value = '1';
     const instance = getDisplayProcessorFromConfig({ decimals: 1, mappings: valueMappings });
 
@@ -293,5 +252,80 @@ describe('Date display options', () => {
       },
     });
     expect(processor(0).text).toEqual('1970');
+  });
+
+  it('Should use system date format by default', () => {
+    const currentFormat = systemDateFormats.fullDate;
+    systemDateFormats.fullDate = 'YYYY-MM';
+
+    const processor = getDisplayProcessor({
+      timeZone: 'utc',
+      field: {
+        type: FieldType.time,
+        config: {},
+      },
+    });
+
+    expect(processor(0).text).toEqual('1970-01');
+
+    systemDateFormats.fullDate = currentFormat;
+  });
+
+  it('should handle ISO string dates', () => {
+    const processor = getDisplayProcessor({
+      timeZone: 'utc',
+      field: {
+        type: FieldType.time,
+        config: {},
+      },
+    });
+
+    expect(processor('2020-08-01T08:48:43.783337Z').text).toEqual('2020-08-01 08:48:43');
+  });
+
+  describe('number formatting for string values', () => {
+    it('should preserve string unchanged if unit is strings', () => {
+      const processor = getDisplayProcessor({
+        field: {
+          type: FieldType.string,
+          config: { unit: 'string' },
+        },
+      });
+      expect(processor('22.1122334455').text).toEqual('22.1122334455');
+    });
+
+    it('should format string as number if no unit', () => {
+      const processor = getDisplayProcessor({
+        field: {
+          type: FieldType.string,
+          config: { decimals: 2 },
+        },
+      });
+      expect(processor('22.1122334455').text).toEqual('22.11');
+    });
+  });
+});
+
+describe('getRawDisplayProcessor', () => {
+  const processor = getRawDisplayProcessor();
+  const date = new Date('2020-01-01T00:00:00.000Z');
+  const timestamp = date.valueOf();
+
+  it.each`
+    value                             | expected
+    ${0}                              | ${'0'}
+    ${13.37}                          | ${'13.37'}
+    ${true}                           | ${'true'}
+    ${false}                          | ${'false'}
+    ${date}                           | ${`${date}`}
+    ${timestamp}                      | ${'1577836800000'}
+    ${'a string'}                     | ${'a string'}
+    ${null}                           | ${'null'}
+    ${undefined}                      | ${'undefined'}
+    ${{ value: 0, label: 'a label' }} | ${'[object Object]'}
+  `('when called with value:{$value}', ({ value, expected }) => {
+    const result = processor(value);
+
+    expect(result).toEqual({ text: expected, numeric: null });
   });
 });

@@ -21,18 +21,19 @@ import { CoreEvents, LocationState } from 'app/types';
 import { calculatePanelSize } from './utils';
 import { initPanelEditor, panelEditorCleanUp, updatePanelEditorUIState } from './state/actions';
 import { PanelEditorUIState, setDiscardChanges } from './state/reducers';
-import {getPanelEditorTabs} from './state/selectors';
-import {getPanelStateById} from '../../state/selectors';
-import {OptionsPaneContent} from './OptionsPaneContent';
-import {DashNavButton} from 'app/features/dashboard/components/DashNav/DashNavButton';
-import {VariableModel} from 'app/features/variables/types';
-import {getVariables} from 'app/features/variables/state/selectors';
-import {SubMenuItems} from 'app/features/dashboard/components/SubMenu/SubMenuItems';
-import {BackButton} from 'app/core/components/BackButton/BackButton';
-import {appEvents} from 'app/core/core';
-import {SaveDashboardModalProxy} from '../SaveDashboard/SaveDashboardModalProxy';
-import {selectors} from '@grafana/e2e-selectors';
-import {contextSrv} from 'app/core/services/context_srv';
+import { getPanelEditorTabs } from './state/selectors';
+import { getPanelStateById } from '../../state/selectors';
+import { OptionsPaneContent } from './OptionsPaneContent';
+import { updateTimeZoneForSession } from 'app/features/profile/state/reducers';
+import { DashNavButton } from 'app/features/dashboard/components/DashNav/DashNavButton';
+import { VariableModel } from 'app/features/variables/types';
+import { getVariables } from 'app/features/variables/state/selectors';
+import { SubMenuItems } from 'app/features/dashboard/components/SubMenu/SubMenuItems';
+import { BackButton } from 'app/core/components/BackButton/BackButton';
+import { appEvents } from 'app/core/core';
+import { SaveDashboardModalProxy } from '../SaveDashboard/SaveDashboardModalProxy';
+import { selectors } from '@grafana/e2e-selectors';
+import { contextSrv } from 'app/core/services/context_srv';
 
 interface OwnProps {
   dashboard: DashboardModel;
@@ -55,6 +56,7 @@ interface DispatchProps {
   panelEditorCleanUp: typeof panelEditorCleanUp;
   setDiscardChanges: typeof setDiscardChanges;
   updatePanelEditorUIState: typeof updatePanelEditorUIState;
+  updateTimeZoneForSession: typeof updateTimeZoneForSession;
 }
 
 type Props = OwnProps & ConnectedProps & DispatchProps;
@@ -101,6 +103,7 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
   };
 
   onFieldConfigChange = (config: FieldConfigSource) => {
+    console.log(config);
     const { panel } = this.props;
 
     panel.updateFieldConfig({
@@ -140,7 +143,7 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
     document.body.style.cursor = 'row-resize';
   };
 
-  onDiplayModeChange = (mode: DisplayMode) => {
+  onDisplayModeChange = (mode: DisplayMode) => {
     const { updatePanelEditorUIState } = this.props;
     updatePanelEditorUIState({
       mode: mode,
@@ -182,6 +185,7 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
       </div>
     );
   };
+
   renderHorizontalSplit(styles: EditorStyles) {
     const { dashboard, panel, tabs, uiState } = this.props;
     return tabs.length > 0 ? (
@@ -221,15 +225,19 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
   }
 
   renderPanelToolbar(styles: EditorStyles) {
-    const { dashboard, location, uiState, variables } = this.props;
+    const { dashboard, location, uiState, variables, updateTimeZoneForSession } = this.props;
     return (
       <div className={styles.panelToolbar}>
         <HorizontalGroup justify={variables.length > 0 ? 'space-between' : 'flex-end'} align="flex-start">
           {this.renderTemplateVariables(styles)}
 
           <HorizontalGroup>
-            <RadioButtonGroup value={uiState.mode} options={displayModes} onChange={this.onDiplayModeChange} />
-            <DashNavTimeControls dashboard={dashboard} location={location} updateLocation={updateLocation} />
+            <RadioButtonGroup value={uiState.mode} options={displayModes} onChange={this.onDisplayModeChange} />
+            <DashNavTimeControls
+              dashboard={dashboard}
+              location={location}
+              onChangeTimeZone={updateTimeZoneForSession}
+            />
             {!uiState.isPanelOptionsVisible && (
               <DashNavButton
                 onClick={this.onTogglePanelOptions}
@@ -344,7 +352,7 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
   }
 }
 
-const mapStateToProps: MapStateToProps<ConnectedProps, OwnProps, StoreState> = (state, props) => {
+const mapStateToProps: MapStateToProps<ConnectedProps, OwnProps, StoreState> = state => {
   const panel = state.panelEditor.getPanel();
   const { plugin } = getPanelStateById(state.dashboard, panel.id);
 
@@ -365,6 +373,7 @@ const mapDispatchToProps: MapDispatchToProps<DispatchProps, OwnProps> = {
   panelEditorCleanUp,
   setDiscardChanges,
   updatePanelEditorUIState,
+  updateTimeZoneForSession,
 };
 
 export const PanelEditor = connect(mapStateToProps, mapDispatchToProps)(PanelEditorUnconnected);

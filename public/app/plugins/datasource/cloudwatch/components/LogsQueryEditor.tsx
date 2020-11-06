@@ -3,7 +3,7 @@ import React, { memo } from 'react';
 
 // Types
 import { AbsoluteTimeRange, QueryEditorProps } from '@grafana/data';
-import { FormLabel } from '@grafana/ui/src/components/FormLabel/FormLabel';
+import { InlineFormLabel } from '@grafana/ui';
 import { CloudWatchDatasource } from '../datasource';
 import { CloudWatchLogsQuery, CloudWatchQuery } from '../types';
 import { CloudWatchLogsQueryField } from './LogsQueryField';
@@ -20,7 +20,7 @@ const labelClass = css`
 `;
 
 export const CloudWatchLogsQueryEditor = memo(function CloudWatchLogsQueryEditor(props: Props) {
-  const { query, data, datasource, onRunQuery, onChange, exploreId, exploreMode, allowCustomValue = false } = props;
+  const { query, data, datasource, onRunQuery, onChange, exploreId, allowCustomValue = false } = props;
 
   let absolute: AbsoluteTimeRange;
   if (data?.request?.range?.from) {
@@ -44,7 +44,6 @@ export const CloudWatchLogsQueryEditor = memo(function CloudWatchLogsQueryEditor
   return (
     <CloudWatchLogsQueryField
       exploreId={exploreId}
-      exploreMode={exploreMode}
       datasource={datasource}
       query={query}
       onBlur={() => {}}
@@ -57,9 +56,9 @@ export const CloudWatchLogsQueryEditor = memo(function CloudWatchLogsQueryEditor
       syntax={syntax}
       allowCustomValue={allowCustomValue}
       ExtraFieldElement={
-        <FormLabel className={`gf-form-label--btn ${labelClass}`} width="auto" tooltip="Link to Graph in AWS">
+        <InlineFormLabel className={`gf-form-label--btn ${labelClass}`} width="auto" tooltip="Link to Graph in AWS">
           <CloudWatchLink query={query as CloudWatchLogsQuery} panelData={data} datasource={datasource} />
-        </FormLabel>
+        </InlineFormLabel>
       }
     />
   );

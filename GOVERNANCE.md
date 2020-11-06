@@ -66,6 +66,7 @@ In case a member leaves, the [offboarding](#offboarding) procedure is applied.
 The current team members are:
 
 - Alexander Zobnin ([Grafana Labs](https://grafana.com/))
+- Alex Khomenko ([Grafana Labs](https://grafana.com/))
 - Andrej Ocenas ([Grafana Labs](https://grafana.com/))
 - Arve Knudsen ([Grafana Labs](https://grafana.com/))
 - Brian Gann ([Grafana Labs](https://grafana.com/))
@@ -77,6 +78,7 @@ The current team members are:
 - Diana Sarlinska ([Grafana Labs](https://grafana.com/))
 - Dominik Prokop ([Grafana Labs](https://grafana.com/))
 - Emil Tullstedt ([Grafana Labs](https://grafana.com/))
+- Fredrik Enestad ([Soundtrack Your Brand](https://www.soundtrackyourbrand.com/))
 - Hugo Häggmark ([Grafana Labs](https://grafana.com/))
 - Ivana Huckova ([Grafana Labs](https://grafana.com/))
 - Jeroen Op 't Eynde ([Grafana Labs](https://grafana.com/))
@@ -143,7 +145,7 @@ For public discussions, anyone interested is encouraged to participate. Formal p
 
 ### Consensus
 
-The default decision making mechanism for the Grafana project is [rough][rough] consensus. This means that any decision on technical issues is considered supported by the [team][team] as long as nobody objects or the objection has been considered but not necessarily accomodated.
+The default decision making mechanism for the Grafana project is [rough][rough] consensus. This means that any decision on technical issues is considered supported by the [team][team] as long as nobody objects or the objection has been considered but not necessarily accommodated.
 
 Silence on any consensus decision is implicit agreement and equivalent to explicit agreement. Explicit agreement may be stated at will. Decisions may, but do not need to be called out and put up for decision on the [developers mailing list][devs] at any time and by anyone.
 

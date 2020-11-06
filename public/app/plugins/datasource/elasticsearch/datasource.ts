@@ -7,45 +7,63 @@ import {
   DataQueryResponse,
   DataFrame,
   ScopedVars,
+  DataLink,
+  PluginMeta,
+  DataQuery,
 } from '@grafana/data';
+import LanguageProvider from './language_provider';
 import { ElasticResponse } from './elastic_response';
 import { IndexPattern } from './index_pattern';
 import { ElasticQueryBuilder } from './query_builder';
 import { toUtc } from '@grafana/data';
 import * as queryDef from './query_def';
 import { getBackendSrv } from '@grafana/runtime';
-import { TemplateSrv } from 'app/features/templating/template_srv';
-import { TimeSrv } from 'app/features/dashboard/services/TimeSrv';
+import { getTemplateSrv, TemplateSrv } from 'app/features/templating/template_srv';
+import { getTimeSrv, TimeSrv } from 'app/features/dashboard/services/TimeSrv';
 import { DataLinkConfig, ElasticsearchOptions, ElasticsearchQuery } from './types';
 
+// Those are metadata fields as defined in https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-fields.html#_identity_metadata_fields.
+// custom fields can start with underscores, therefore is not safe to exclude anything that starts with one.
+const ELASTIC_META_FIELDS = [
+  '_index',
+  '_type',
+  '_id',
+  '_source',
+  '_size',
+  '_field_names',
+  '_ignored',
+  '_routing',
+  '_meta',
+];
+
 export class ElasticDatasource extends DataSourceApi<ElasticsearchQuery, ElasticsearchOptions> {
-  basicAuth: string;
-  withCredentials: boolean;
+  basicAuth?: string;
+  withCredentials?: boolean;
   url: string;
   name: string;
   index: string;
   timeField: string;
   esVersion: number;
   interval: string;
-  maxConcurrentShardRequests: number;
+  maxConcurrentShardRequests?: number;
   queryBuilder: ElasticQueryBuilder;
   indexPattern: IndexPattern;
   logMessageField?: string;
   logLevelField?: string;
   dataLinks: DataLinkConfig[];
+  languageProvider: LanguageProvider;
 
-  /** @ngInject */
   constructor(
     instanceSettings: DataSourceInstanceSettings<ElasticsearchOptions>,
-    private templateSrv: TemplateSrv,
-    private timeSrv: TimeSrv
+    private readonly templateSrv: TemplateSrv = getTemplateSrv(),
+    private readonly timeSrv: TimeSrv = getTimeSrv()
   ) {
     super(instanceSettings);
     this.basicAuth = instanceSettings.basicAuth;
     this.withCredentials = instanceSettings.withCredentials;
-    this.url = instanceSettings.url;
+    this.url = instanceSettings.url!;
     this.name = instanceSettings.name;
-    this.index = instanceSettings.database;
+    this.index = instanceSettings.database ?? '';
     const settingsData = instanceSettings.jsonData || ({} as ElasticsearchOptions);
 
     this.timeField = settingsData.timeField;
@@ -62,12 +80,13 @@ export class ElasticDatasource extends DataSourceApi<ElasticsearchQuery, Elastic
     this.dataLinks = settingsData.dataLinks || [];
 
     if (this.logMessageField === '') {
-      this.logMessageField = null;
+      this.logMessageField = undefined;
     }
 
     if (this.logLevelField === '') {
-      this.logLevelField = null;
+      this.logLevelField = undefined;
     }
+    this.languageProvider = new LanguageProvider(this);
   }
 
   private request(method: string, url: string, data?: undefined) {
@@ -97,6 +116,10 @@ export class ElasticDatasource extends DataSourceApi<ElasticsearchQuery, Elastic
         }
         throw err;
       });
+  }
+
+  async importQueries(queries: DataQuery[], originMeta: PluginMeta): Promise<ElasticsearchQuery[]> {
+    return this.languageProvider.importQueries(queries, originMeta.id);
   }
 
   /**
@@ -314,13 +337,9 @@ export class ElasticDatasource extends DataSourceApi<ElasticsearchQuery, Elastic
         return { status: 'success', message: 'Index OK. Time field name OK.' };
       },
       (err: any) => {
-        console.log(err);
-        if (err.data && err.data.error) {
-          let message = angular.toJson(err.data.error);
-          if (err.data.error.reason) {
-            message = err.data.error.reason;
-          }
-          return { status: 'error', message: message };
+        console.error(err);
+        if (err.message) {
+          return { status: 'error', message: err.message };
         } else {
           return { status: 'error', message: err.status };
         }
@@ -334,9 +353,11 @@ export class ElasticDatasource extends DataSourceApi<ElasticsearchQuery, Elastic
       ignore_unavailable: true,
       index: this.indexPattern.getIndexList(timeFrom, timeTo),
     };
+
     if (this.esVersion >= 56 && this.esVersion < 70) {
       queryHeader['max_concurrent_shard_requests'] = this.maxConcurrentShardRequests;
     }
+
     return angular.toJson(queryHeader);
   }
 
@@ -362,7 +383,7 @@ export class ElasticDatasource extends DataSourceApi<ElasticsearchQuery, Elastic
       let queryObj;
       if (target.isLogsQuery || queryDef.hasMetricOfType(target, 'logs')) {
         target.bucketAggs = [queryDef.defaultBucketAgg()];
-        target.metrics = [queryDef.defaultMetricAgg()];
+        target.metrics = [];
         // Setting this for metrics queries that are typed as logs
         target.isLogsQuery = true;
         queryObj = this.queryBuilder.getLogsQuery(target, adhocFilters, queryString);
@@ -401,16 +422,21 @@ export class ElasticDatasource extends DataSourceApi<ElasticsearchQuery, Elastic
 
     return this.post(url, payload).then((res: any) => {
       const er = new ElasticResponse(sentTargets, res);
+
       if (sentTargets.some(target => target.isLogsQuery)) {
         const response = er.getLogs(this.logMessageField, this.logLevelField);
         for (const dataFrame of response.data) {
-          this.enhanceDataFrame(dataFrame);
+          enhanceDataFrame(dataFrame, this.dataLinks);
         }
         return response;
       }
 
       return er.getTimeSeries();
     });
+  }
+
+  isMetadataField(fieldName: string) {
+    return ELASTIC_META_FIELDS.includes(fieldName);
   }
 
   getFields(query: any) {
@@ -422,14 +448,15 @@ export class ElasticDatasource extends DataSourceApi<ElasticsearchQuery, Elastic
         integer: 'number',
         long: 'number',
         date: 'date',
+        date_nanos: 'date',
         string: 'string',
         text: 'string',
         scaled_float: 'number',
         nested: 'nested',
       };
 
-      function shouldAddField(obj: any, key: any, query: any) {
-        if (key[0] === '_') {
+      const shouldAddField = (obj: any, key: string, query: any) => {
+        if (this.isMetadataField(key)) {
           return false;
         }
 
@@ -439,7 +466,7 @@ export class ElasticDatasource extends DataSourceApi<ElasticsearchQuery, Elastic
 
         // equal query type filter, or via typemap translation
         return query.type === obj.type || query.type === typeMap[obj.type];
-      }
+      };
 
       // Store subfield names: [system, process, cpu, total] -> system.process.cpu.total
       const fieldNameParts: any = [];
@@ -584,24 +611,6 @@ export class ElasticDatasource extends DataSourceApi<ElasticsearchQuery, Elastic
     return false;
   }
 
-  enhanceDataFrame(dataFrame: DataFrame) {
-    if (this.dataLinks.length) {
-      for (const field of dataFrame.fields) {
-        const dataLink = this.dataLinks.find(dataLink => field.name && field.name.match(dataLink.field));
-        if (dataLink) {
-          field.config = field.config || {};
-          field.config.links = [
-            ...(field.config.links || []),
-            {
-              url: dataLink.url,
-              title: '',
-            },
-          ];
-        }
-      }
-    }
-  }
-
   private isPrimitive(obj: any) {
     if (obj === null || obj === undefined) {
       return true;
@@ -637,5 +646,37 @@ export class ElasticDatasource extends DataSourceApi<ElasticsearchQuery, Elastic
     }
 
     return false;
+  }
+}
+
+/**
+ * Modifies dataframe and adds dataLinks from the config.
+ * Exported for tests.
+ */
+export function enhanceDataFrame(dataFrame: DataFrame, dataLinks: DataLinkConfig[]) {
+  if (dataLinks.length) {
+    for (const field of dataFrame.fields) {
+      const dataLinkConfig = dataLinks.find(dataLink => field.name && field.name.match(dataLink.field));
+      if (dataLinkConfig) {
+        let link: DataLink;
+        if (dataLinkConfig.datasourceUid) {
+          link = {
+            title: '',
+            url: '',
+            internal: {
+              query: { query: dataLinkConfig.url },
+              datasourceUid: dataLinkConfig.datasourceUid,
+            },
+          };
+        } else {
+          link = {
+            title: '',
+            url: dataLinkConfig.url,
+          };
+        }
+        field.config = field.config || {};
+        field.config.links = [...(field.config.links || []), link];
+      }
+    }
   }
 }

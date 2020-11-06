@@ -51,13 +51,16 @@ export type TraceSpanData = {
   traceID: string;
   processID: string;
   operationName: string;
+  // Times are in microseconds
   startTime: number;
   duration: number;
   logs: TraceLog[];
   tags?: TraceKeyValuePair[];
   references?: TraceSpanReference[];
   warnings?: string[] | null;
+  stackTraces?: string[];
   flags: number;
+  errorIconColor?: string;
 };
 
 export type TraceSpan = TraceSpanData & {

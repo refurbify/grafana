@@ -5,8 +5,9 @@ keywords = ["Grafana", "alerting", "guide", "notifications"]
 type = "docs"
 [menu.docs]
 name = "Notifications"
+identifier = "alert-notification"
 parent = "alerting"
-weight = 200
+weight = 100
 +++
 
 # Alert notifications
@@ -73,14 +74,17 @@ Telegram | `telegram` | yes | no
 Threema | `threema` | yes, external only | no
 VictorOps | `victorops` | yes, external only | no
 [Webhook](#webhook) | `webhook` | yes, external only | yes
+[Zenduty](#zenduty) | `webhook` | yes, external only | yes
 
 ### Email
 
-To enable email notifications you have to setup [SMTP settings]({{< relref "../administration/configuration/#smtp" >}})
+To enable email notifications you have to set up [SMTP settings]({{< relref "../administration/configuration/#smtp" >}})
 in the Grafana config. Email notifications will upload an image of the alert graph to an
 external image destination if available or fallback to attaching the image to the email.
 Be aware that if you use the `local` image storage email servers and clients might not be
 able to access the image.
+
+> **Note:** Template variables are not supported in email alerts.
 
 Setting | Description
 ---------- | -----------
@@ -99,15 +103,15 @@ provided, which starts with "xoxb".
 
 Setting | Description
 ---------- | -----------
-Url | Slack incoming webhook URL.
+Url | Slack incoming webhook URL, or eventually the [chat.postMessage](https://api.slack.com/methods/chat.postMessage) Slack API endpoint.
 Username | Set the username for the bot's message.
-Recipient | Allows you to override the Slack recipient. You must either provide a channel Slack ID, a user Slack ID, a username reference (@&lt;user&gt;, all lowercase, no whitespace), or a channel reference (#&lt;channel&gt;, all lowercase, no whitespace).
+Recipient | Allows you to override the Slack recipient. You must either provide a channel Slack ID, a user Slack ID, a username reference (@&lt;user&gt;, all lowercase, no whitespace), or a channel reference (#&lt;channel&gt;, all lowercase, no whitespace). If you use the `chat.postMessage` Slack API endpoint, this is required.
 Icon emoji | Provide an emoji to use as the icon for the bot's message. Ex :smile:
 Icon URL | Provide a URL to an image to use as the icon for the bot's message.
 Mention Users | Optionally mention one or more users in the Slack notification sent by Grafana. You have to refer to users, comma-separated, via their corresponding Slack IDs (which you can find by clicking the overflow button on each user's Slack profile).
 Mention Groups | Optionally mention one or more groups in the Slack notification sent by Grafana. You have to refer to groups, comma-separated, via their corresponding Slack IDs (which you can get from each group's Slack profile URL).
 Mention Channel | Optionally mention either all channel members or just active ones.
-Token | If provided, Grafana will upload the generated image via Slack's file.upload API method, not the external image destination.
+Token | If provided, Grafana will upload the generated image via Slack's file.upload API method, not the external image destination. If you use the `chat.postMessage` Slack API endpoint, this is required.
 
 If you are using the token for a slack bot, then you have to invite the bot to the channel you want to send notifications and add the channel to the recipient field.
 
@@ -122,13 +126,14 @@ Severity | Level for dynamic notifications, default is `critical` (1)
 Auto resolve incidents | Resolve incidents in PagerDuty once the alert goes back to ok
 Message in details | Removes the Alert message from the PD summary field and puts it into custom details instead (2)
 
->**Note:** The tags `Severity`, `Class`, `Group`, and `Component` have special meaning in the [Pagerduty Common Event Format - PD-CEF](https://support.pagerduty.com/docs/pd-cef). If an alert panel defines these tag keys, then they are transposed to the root of the event sent to Pagerduty. This means they will be available within the Pagerduty UI and Filtering tools. A Severity tag set on an alert overrides the global Severity set on the notification channel if it's a valid level.
+>**Note:** The tags `Severity`, `Class`, `Group`, `dedup_key`, and `Component` have special meaning in the [Pagerduty Common Event Format - PD-CEF](https://support.pagerduty.com/docs/pd-cef). If an alert panel defines these tag keys, then they are transposed to the root of the event sent to Pagerduty. This means they will be available within the Pagerduty UI and Filtering tools. A Severity tag set on an alert overrides the global Severity set on the notification channel if it's a valid level.
 
 >Using Message In Details will change the structure of the `custom_details` field in the PagerDuty Event.
 This might break custom event rules in your PagerDuty rules if you rely on the fields in `payload.custom_details`.
 Move any existing rules using `custom_details.myMetric` to `custom_details.queries.myMetric`.
 This behavior will become the default in a future version of Grafana.
 
+> Using `dedup_key` tag will override Grafana generated `dedup_key` with a custom key.
 ### Webhook
 
 The webhook notification is a simple way to send information about a state change over HTTP to a custom endpoint.
@@ -171,17 +176,17 @@ In DingTalk PC Client:
 
 1. Click "more" icon on upper right of the panel.
 
-2. Click "Robot Manage" item in the pop menu, there will be a new panel call "Robot Manage".
+1. Click "Robot Manage" item in the pop menu, there will be a new panel call "Robot Manage".
 
-3. In the  "Robot Manage" panel, select "customized: customized robot with Webhook".
+1. In the  "Robot Manage" panel, select "customized: customized robot with Webhook".
 
-4. In the next new panel named "robot detail", click "Add" button.
+1. In the next new panel named "robot detail", click "Add" button.
 
-5. In "Add Robot" panel, input a nickname for the robot and select a "message group" which the robot will join in. click "next".
+1. In "Add Robot" panel, input a nickname for the robot and select a "message group" which the robot will join in. click "next".
 
-6. There will be a Webhook URL in the panel, looks like this: https://oapi.dingtalk.com/robot/send?access_token=xxxxxxxxx. Copy this URL to the grafana Dingtalk setting page and then click "finish".
+1. There will be a Webhook URL in the panel, looks like this: https://oapi.dingtalk.com/robot/send?access_token=xxxxxxxxx. Copy this URL to the Grafana DingTalk setting page and then click "finish".
 
-Dingtalk supports the following "message type": `text`, `link` and `markdown`. Only the `link` message type is supported.
+DingTalk supports the following "message type": `text`, `link` and `markdown`. Only the `link` message type is supported.
 
 ### Kafka
 
@@ -190,13 +195,13 @@ There are a couple of configuration options which need to be set up in Grafana U
 
 1. Kafka REST Proxy endpoint.
 
-2. Kafka Topic.
+1. Kafka Topic.
 
 Once these two properties are set, you can send the alerts to Kafka for further processing or throttling.
 
 ### Google Hangouts Chat
 
-Notifications can be sent by setting up an incoming webhook in Google Hangouts chat. Configuring such a webhook is described [here](https://developers.google.com/hangouts/chat/how-tos/webhooks).
+Notifications can be sent by setting up an incoming webhook in Google Hangouts chat. For more information about configuring a webhook, refer to [webhooks](https://developers.google.com/hangouts/chat/how-tos/webhooks).
 
 ### Squadcast
 
@@ -207,6 +212,10 @@ Squadcast helps you get alerted via Phone call, SMS, Email and Push notification
 Alertmanager handles alerts sent by client applications such as Prometheus server or Grafana. It takes care of deduplicating, grouping, and routing them to the correct receiver. Grafana notifications can be sent to Alertmanager via a simple incoming webhook. Refer to the official [Prometheus Alertmanager documentation](https://prometheus.io/docs/alerting/alertmanager) for configuration information.
 
 > **Caution:** In case of a high-availability setup, do not load balance traffic between Grafana and Alertmanagers to keep coherence between all your Alertmanager instances. Instead, point Grafana to a list of all Alertmanagers, by listing their URLs comma-separated in the notification channel configuration.
+
+### Zenduty
+
+[Zenduty](https://www.zenduty.com) is an incident alerting and response orchestration platform that not alerts the right teams via SMS, Phone(Voice), Email, Slack, Microsoft Teams and Push notifications(Android/iOS) whenever a Grafana alert is triggered, but also helps you rapidly triage and remediate critical, user impacting incidents. Grafana alert are sent to Zenduty through Grafana's native webhook dispatcher. Refer the Zenduty-Grafana [integration documentation](https://docs.zenduty.com/docs/grafana) for configuring the integration.
 
 ## Enable images in notifications {#external-image-store}
 

@@ -27,7 +27,7 @@ The following sections provide an overview of things you might want to do with y
 
 Explore your data through ad-hoc queries and dynamic drilldown. Split view and compare different time ranges, queries and data sources side by side. 
 
-Refer to [Explore]({{< relref "../features/explore/index.md" >}}) for more information.
+Refer to [Explore]({{< relref "../explore/index.md" >}}) for more information.
 
 ## Alerts
 
@@ -41,11 +41,11 @@ Annotate graphs with rich events from different data sources. Hover over events 
 
 This feature, which shows up as a graph marker in Grafana, is useful for correlating data in case something goes wrong. You can create the annotations manually—just control-click on a graph and input some text—or you can fetch data from any data source.
 
-Refer to [Annotations]({{< relref "../reference/annotations.md" >}}) for more information.
+Refer to [Annotations]({{< relref "../dashboards/annotations.md" >}}) for more information.
 
 ## Dashboard variables
 
-[Template variables]({{< relref "../variables/templates-and-variables.md" >}}) allow you to create dashboards that can be reused for lots of different use cases. Values aren't hard-coded with these templates, so for instance, if you have a production server and a test server, you can use the same dashboard for both. 
+[Template variables]({{< relref "../variables/_index.md" >}}) allow you to create dashboards that can be reused for lots of different use cases. Values aren't hard-coded with these templates, so for instance, if you have a production server and a test server, you can use the same dashboard for both. 
 
 Templating allows you to drill down into your data, say, from all data to North America data, down to Texas data, and beyond. You can also share these dashboards across teams within your organization—or if you create a great dashboard template for a popular data source, you can contribute it to the whole community to customize and use.
 
@@ -77,7 +77,7 @@ Refer to [Provisioning]({{< relref "../administration/provisioning.md" >}}) for 
 
 ## Permissions
 
-When organizations have one Grafana and multiple teams, they often want the ability to both keep things separate and share dashboards. You can create a team of users and then set [permissions]({{< relref "../permissions/overview.md" >}}) on folders, dashboards, and down to the [data source level]({{< relref "../enterprise/datasource_permissions.md" >}}) if you're using [Grafana Enterprise]({{< relref "../enterprise/_index.md" >}}).
+When organizations have one Grafana and multiple teams, they often want the ability to both keep things separate and share dashboards. You can create a team of users and then set [permissions]({{< relref "../permissions/_index.md" >}}) on folders, dashboards, and down to the [data source level]({{< relref "../enterprise/datasource_permissions.md" >}}) if you're using [Grafana Enterprise]({{< relref "../enterprise/_index.md" >}}).
 
 ## Grafana Cloud
 
