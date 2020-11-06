@@ -15,6 +15,7 @@ awsconfig
 .yarnrc
 .yarn/
 vendor/
+.nvmrc
 
 # Enterprise emails
 /emails/templates/enterprise_*
