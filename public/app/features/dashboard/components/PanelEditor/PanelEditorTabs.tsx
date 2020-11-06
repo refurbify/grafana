@@ -1,4 +1,4 @@
-import React, { PureComponent, useCallback } from 'react';
+import React, { PureComponent } from 'react';
 import { config } from 'app/core/config';
 import { css } from 'emotion';
 import { IconName, stylesFactory, Tab, TabContent, TabsBar } from '@grafana/ui';
@@ -17,9 +17,12 @@ interface PanelEditorTabsProps {
   onChangeTab: (tab: PanelEditorTab) => void;
 }
 
-export const PanelEditorTabs: React.FC<PanelEditorTabsProps> = ({panel, dashboard, tabs, onChangeTab}) => {
-  const styles = getPanelEditorTabsStyles();
-  const activeTab = tabs.find(item => item.active);
+export class PanelEditorTabs extends PureComponent<PanelEditorTabsProps> {
+  componentDidMount() {
+    const { panel } = this.props;
+    panel.on(CoreEvents.queryChanged, this.triggerForceUpdate);
+    panel.on(CoreEvents.transformationChanged, this.triggerForceUpdate);
+  }
 
   componentWillUnmount() {
     const { panel } = this.props;
@@ -45,58 +48,70 @@ export const PanelEditorTabs: React.FC<PanelEditorTabsProps> = ({panel, dashboar
     }
 
     return null;
-  }
-  if (contextSrv?.user?.orgRole === 'Editor') {
+  };
+
+  render() {
+    const { dashboard, onChangeTab, tabs, panel } = this.props;
+    const styles = getPanelEditorTabsStyles();
+    const activeTab = tabs.find(item => item.active)!;
+
+    if (tabs.length === 0) {
+      return null;
+    }
+
+    if (contextSrv?.user?.orgRole === 'Editor') {
+      return (
+        <div className={styles.wrapper}>
+          <TabsBar className={styles.tabBar}>
+            {tabs.map(tab => {
+              if (tab.text === 'Alert') {
+                return (
+                  <Tab
+                    key={tab.id}
+                    label={tab.text}
+                    active={true}
+                    onChangeTab={() => onChangeTab(tab)}
+                    icon={tab.icon as IconName}
+                    counter={this.getCounter(tab)}
+                  />
+                );
+              } else {
+                return null;
+              }
+            })}
+          </TabsBar>
+          <TabContent className={styles.tabContent}>
+            {activeTab.id === PanelEditorTabId.Alert && <AlertTab panel={panel} dashboard={dashboard} />}
+          </TabContent>
+        </div>
+      );
+    }
+
     return (
       <div className={styles.wrapper}>
         <TabsBar className={styles.tabBar}>
           {tabs.map(tab => {
-            if (tab.text === 'Alert') {
-              return (
-                <Tab
-                  key={tab.id}
-                  label={tab.text}
-                  active={true}
-                  onChangeTab={() => onChangeTab(tab)}
-                  icon={tab.icon as IconName}
-                  counter={getCounter(tab)}
-                />
-              );
-            } else {
-              return null;
-            }
+            return (
+              <Tab
+                key={tab.id}
+                label={tab.text}
+                active={tab.active}
+                onChangeTab={() => onChangeTab(tab)}
+                icon={tab.icon as IconName}
+                counter={this.getCounter(tab)}
+              />
+            );
           })}
         </TabsBar>
         <TabContent className={styles.tabContent}>
-          {activeTab.id === PanelEditorTabId.Alert && <AlertTab panel={panel} dashboard={dashboard}/>}
+          {activeTab.id === PanelEditorTabId.Query && <QueriesTab panel={panel} dashboard={dashboard} />}
+          {activeTab.id === PanelEditorTabId.Alert && <AlertTab panel={panel} dashboard={dashboard} />}
+          {activeTab.id === PanelEditorTabId.Transform && <TransformationsEditor panel={panel} />}
         </TabContent>
       </div>
     );
   }
-  return (
-    <div className={styles.wrapper}>
-      <TabsBar className={styles.tabBar}>
-        {tabs.map(tab => {
-          return (
-            <Tab
-              key={tab.id}
-              label={tab.text}
-              active={tab.active}
-              onChangeTab={() => onChangeTab(tab)}
-              icon={tab.icon as IconName}
-              counter={getCounter(tab)}
-            />
-          );
-        })}
-      </TabsBar>
-      <TabContent className={styles.tabContent}>
-        {activeTab.id === PanelEditorTabId.Query && <QueriesTab panel={panel} dashboard={dashboard} />}
-        {activeTab.id === PanelEditorTabId.Alert && <AlertTab panel={panel} dashboard={dashboard} />}
-        {activeTab.id === PanelEditorTabId.Transform && <TransformationsEditor panel={panel} />}
-      </TabContent>
-    </div>
-  );
-};
+}
 
 const getPanelEditorTabsStyles = stylesFactory(() => {
   const { theme } = config;
