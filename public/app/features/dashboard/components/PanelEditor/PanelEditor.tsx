@@ -291,13 +291,13 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
   }
 
   renderOptionsPane() {
-    const {plugin, dashboard, panel, uiState} = this.props;
+    const { plugin, dashboard, panel, uiState } = this.props;
 
     if (!plugin) {
-      return <div/>;
+      return <div />;
     }
     if (contextSrv?.user?.orgRole === 'Editor') {
-      return <div/>;
+      return <div />;
     }
     return (
       <OptionsPaneContent
