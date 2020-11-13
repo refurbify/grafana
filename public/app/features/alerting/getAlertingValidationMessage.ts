@@ -25,6 +25,7 @@ export const getAlertingValidationMessage = async (
   }
 
   let alertingNotSupported = 0;
+  // Clarity Changes
   // let templateVariablesNotSupported = 0;
 
   for (const target of targets) {
@@ -33,6 +34,7 @@ export const getAlertingValidationMessage = async (
     if (!ds.meta.alerting) {
       alertingNotSupported++;
     }
+    // Clarity Changes
     // else if (ds.targetContainsTemplate && ds.targetContainsTemplate(target)) {
     //   templateVariablesNotSupported++;
     // }
@@ -42,6 +44,7 @@ export const getAlertingValidationMessage = async (
     return 'The datasource does not support alerting queries';
   }
 
+  // Clarity Changes
   // if (templateVariablesNotSupported === targets.length) {
   //   return 'Template variables are not supported in alert queries';
   // }

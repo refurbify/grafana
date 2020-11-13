@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings" // Clarity Changes
 	"time"
 
 	"github.com/grafana/grafana/pkg/bus"
 	"github.com/grafana/grafana/pkg/components/simplejson"
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/models"
-	"strings"
 )
 
 // DashAlertExtractor extracts alerts from the dashboard json.
@@ -59,6 +59,7 @@ func findPanelQueryByRefID(panel *simplejson.Json, refID string, variableMap map
 	for _, targetsObj := range panel.Get("targets").MustArray() {
 		target := simplejson.NewFromAny(targetsObj)
 
+		// Clarity Changes
 		if target.Get("rawSql").MustString() != "" {
 			rawSQL := target.Get("rawSql").MustString()
 			fmt.Println(rawSQL)
@@ -66,7 +67,7 @@ func findPanelQueryByRefID(panel *simplejson.Json, refID string, variableMap map
 				rawSQL = strings.Replace(rawSQL, "$"+key, val, -1)
 			}
 
-			fmt.Println("after change ============= \n")
+			fmt.Println("after change =============")
 			fmt.Println(rawSQL)
 			target.Set("rawSql", rawSQL)
 		}
@@ -90,11 +91,11 @@ func copyJSON(in json.Marshaler) (*simplejson.Json, error) {
 func (e *DashAlertExtractor) getAlertFromPanels(jsonWithPanels *simplejson.Json, validateAlertFunc func(*models.Alert) bool, logTranslationFailures bool) ([]*models.Alert, error) {
 	alerts := make([]*models.Alert, 0)
 
-	// Code for creating variable map start
+	//------------------------------------------------------------------------------------------------------------------ Clarity Changes: Code for creating variable map
 	var variableMap map[string]string
 	variableMap = make(map[string]string)
 
-	//Fetching the variables
+	// Fetching the variables
 	templates := jsonWithPanels.Get("templating")
 
 	for _, templateList := range templates.Get("list").MustArray() {
@@ -124,11 +125,11 @@ func (e *DashAlertExtractor) getAlertFromPanels(jsonWithPanels *simplejson.Json,
 
 		variableMap[variableName] = currentVariableValue
 		for key, value := range variableMap {
-			fmt.Println("----------------MAP-------------------- \n")
+			fmt.Println("----------------MAP--------------------")
 			fmt.Println("Key:", key, "Value:", value)
 		}
 	}
-	// Code for variable map ends
+	//------------------------------------------------------------------------------------------------------------------ Clarity Changes: Code for creating variable map
 
 	for _, panelObj := range jsonWithPanels.Get("panels").MustArray() {
 		panel := simplejson.NewFromAny(panelObj)
@@ -187,7 +188,7 @@ func (e *DashAlertExtractor) getAlertFromPanels(jsonWithPanels *simplejson.Json,
 			Message:     jsonAlert.Get("message").MustString(),
 			Frequency:   frequency,
 			For:         forValue,
-			UserId:      e.User.UserId, //Clarity
+			UserId:      e.User.UserId, // Clarity Changes
 		}
 
 		for _, condition := range jsonAlert.Get("conditions").MustArray() {
@@ -195,7 +196,7 @@ func (e *DashAlertExtractor) getAlertFromPanels(jsonWithPanels *simplejson.Json,
 
 			jsonQuery := jsonCondition.Get("query")
 			queryRefID := jsonQuery.Get("params").MustArray()[0].(string)
-			panelQuery := findPanelQueryByRefID(panel, queryRefID, variableMap)
+			panelQuery := findPanelQueryByRefID(panel, queryRefID, variableMap) // Clarity Changes
 
 			if panelQuery == nil {
 				reason := fmt.Sprintf("Alert on PanelId: %v refers to query(%s) that cannot be found", alert.PanelId, queryRefID)

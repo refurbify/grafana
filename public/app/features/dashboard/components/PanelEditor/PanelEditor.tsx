@@ -38,7 +38,7 @@ import { VariableModel } from 'app/features/variables/types';
 import { DashboardModel, PanelModel } from '../../state';
 
 // Clarity Changes
-import {contextSrv} from 'app/core/services/context_srv';
+import { contextSrv } from 'app/core/services/context_srv';
 
 interface OwnProps {
   dashboard: DashboardModel;

@@ -8,7 +8,7 @@ import (
 
 	"github.com/grafana/grafana/pkg/bus"
 	"github.com/grafana/grafana/pkg/models"
-	"github.com/grafana/grafana/pkg/services/dashboards"
+	"github.com/grafana/grafana/pkg/services/dashboards" // Clarity Changes
 )
 
 // timeNow makes it possible to test usage of time
@@ -23,7 +23,7 @@ func init() {
 	bus.AddHandler("sql", GetAlertStatesForDashboard)
 	bus.AddHandler("sql", PauseAlert)
 	bus.AddHandler("sql", PauseAllAlerts)
-	bus.AddHandler("sql", GetAlertsByDashboardIdNew) //Clarity Changes
+	bus.AddHandler("sql", GetAlertsByDashboardId) // Clarity Changes
 }
 
 func GetAlertById(query *models.GetAlertByIdQuery) error {
@@ -40,8 +40,8 @@ func GetAlertById(query *models.GetAlertByIdQuery) error {
 	return nil
 }
 
-//Clarity Changes
-func GetAlertsByDashboardIdNew(query *models.GetAlertsByDashboardIdNew) error {
+// Clarity Changes
+func GetAlertsByDashboardId(query *models.GetAlertsByDashboardId) error {
 	var alerts []*models.Alert
 	err := x.SQL("select * from alert where dashboard_id = ?", query.Id).Find(&alerts)
 	if err != nil {
@@ -52,8 +52,8 @@ func GetAlertsByDashboardIdNew(query *models.GetAlertsByDashboardIdNew) error {
 	return nil
 }
 
-//Clarity Changes used to save multiple alerts
-//New Query to fetch alerts specific to the user,dashboard and panel
+// Clarity Changes used to save multiple alerts
+// New Query to fetch alerts specific to the user, dashboard and panel
 func GetAlertForUser(dashboardId int64, panelId int64, userId int64, sess *DBSession) (error, *models.Alert) {
 	alert := models.Alert{}
 	has, err := x.SQL("select * from alert where  dashboard_id = ? and panel_id = ? and user_id = ?", dashboardId, panelId, userId).Get(&alert)
@@ -65,6 +65,7 @@ func GetAlertForUser(dashboardId int64, panelId int64, userId int64, sess *DBSes
 	}
 	return nil, &alert
 }
+
 func GetAllAlertQueryHandler(query *models.GetAllAlertsQuery) error {
 	var alerts []*models.Alert
 	err := x.SQL("select * from alert").Find(&alerts)
@@ -101,6 +102,7 @@ func deleteAlertByIdInternal(alertId int64, reason string, sess *DBSession) erro
 func HandleAlertsQuery(query *models.GetAlertsQuery) error {
 	builder := SqlBuilder{}
 
+	// Clarity Changes: +`alert.user_id`
 	builder.Write(`SELECT
 		alert.id,
 		alert.dashboard_id,
@@ -117,8 +119,8 @@ func HandleAlertsQuery(query *models.GetAlertsQuery) error {
 		FROM alert
 		INNER JOIN dashboard on dashboard.id = alert.dashboard_id `)
 
-	//Clarity Change to display user specific alerts on alert list panel
-	//if the user is Admin then display all the alerts
+	// Clarity Change to display user specific alerts on alert list panel.
+	// If the user is Admin then display all the alerts.
 	if query.User.OrgRole == models.ROLE_ADMIN {
 		builder.Write(`WHERE alert.org_id = ?`, query.OrgId)
 	} else {
@@ -219,9 +221,9 @@ func SaveAlerts(cmd *models.SaveAlertsCommand) error {
 	})
 }
 
-//Clarity Change save alert per user functionality
-// Before creating/updating any alerts Check, if the alert(For that specific dashboard,user,panel) already exists in DB, yes then check if the user id is same
-//if yes then update the alert, else create a new one
+// Clarity Change save alert per user functionality
+// Before creating/updating any alerts Check, if the alert(For that specific dashboard,user,panel) already exists in DB,
+// yes then check if the user id is same. If yes then update the alert, else create a new one.
 func updateAlerts(existingAlerts []*models.Alert, cmd *models.SaveAlertsCommand, sess *DBSession) error {
 	for _, alert := range cmd.Alerts {
 		update := false
@@ -419,6 +421,7 @@ func PauseAllAlerts(cmd *models.PauseAllAlertCommand) error {
 }
 
 func GetAlertStatesForDashboard(query *models.GetAlertStatesForDashboardQuery) error {
+	// Clarity Changes: +`AND user_id = ?`
 	var rawSql = `SELECT
 	                id,
 	                dashboard_id,
@@ -429,6 +432,7 @@ func GetAlertStatesForDashboard(query *models.GetAlertStatesForDashboardQuery) e
 	                WHERE org_id = ? AND dashboard_id = ? AND user_id = ?`
 
 	query.Result = make([]*models.AlertStateInfoDTO, 0)
+	// Clarity Changes: +`query.UserId`
 	err := x.SQL(rawSql, query.OrgId, query.DashboardId, query.UserId).Find(&query.Result)
 
 	return err

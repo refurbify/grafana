@@ -127,27 +127,34 @@ func (hs *HTTPServer) GetDashboard(c *models.ReqContext) Response {
 			hs.log.Warn("Failed to create ProvisionedExternalId", "err", err)
 		}
 	}
+
 	// make sure db version is in sync with json model version
 	dash.Data.Set("version", dash.Version)
+
 	dto := dtos.DashboardFullWithMeta{
 		Dashboard: dash.Data,
 		Meta:      meta,
 	}
-	//Clarity changes to retrieve user specific alerts on the dashboard.
-	//This change will fetch alerts from the alert table, rather than the dashboard table
-	//And re-populate the dashboard json with these alerts.
-	query := models.GetAlertsByDashboardIdNew{
+
+	// Clarity Changes to retrieve user specific alerts on the dashboard.
+	// This change will fetch alerts from the alert table, rather than the dashboard table and re-populate the
+	// dashboard json with these alerts.
+	query := models.GetAlertsByDashboardId{
 		Id: dash.Id,
 	}
+
 	if err := bus.Dispatch(&query); err != nil {
 		return Error(500, "Failed to fetch alerts", err)
 	}
+
 	var panel *simplejson.Json
 	var newPanel []*simplejson.Json
 	var isAlertSet bool
+
 	for _, panelObj := range dash.Data.Get("panels").MustArray() {
 		panel = simplejson.NewFromAny(panelObj)
 		isAlertSet = false
+
 		for _, alert := range query.Result {
 			if alert.PanelId == panel.Get("id").MustInt64() && alert.UserId == c.UserId {
 				panel.Set("alert", alert.Settings)
@@ -156,11 +163,13 @@ func (hs *HTTPServer) GetDashboard(c *models.ReqContext) Response {
 				break
 			}
 		}
+
 		if isAlertSet == false {
 			panel.Del("alert")
 			newPanel = append(newPanel, panel)
 		}
 	}
+
 	dto.Dashboard.Set("panels", newPanel)
 	c.TimeRequest(metrics.MApiDashboardGet)
 	return JSON(200, dto)
@@ -325,7 +334,7 @@ func dashboardSaveErrorToApiResponse(err error) Response {
 		return Error(400, err.Error(), nil)
 	}
 
-	//Clarity Changes
+	// Clarity Changes
 	if validationErr, ok := err.(dashboards.ValidationError); ok {
 		return Error(422, validationErr.Error(), nil)
 	}
