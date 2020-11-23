@@ -107,7 +107,7 @@ func GetAlerts(c *models.ReqContext) Response {
 		PanelId:      c.QueryInt64("panelId"),
 		Limit:        c.QueryInt64("limit"),
 		User:         c.SignedInUser,
-		Query:        c.Query("alertQuery"),
+		Query:        c.Query("alertQuery"), // Clarity Changes: `query` -> `alertQuery`
 		UserId:       c.SignedInUser.UserId, // Clarity Changes
 	}
 
