@@ -1,60 +1,68 @@
-version: 2.1
-
-aliases:
-  # Workflow filters
-  - &filter-only-master
-    branches:
-      only: master
-
+version: 2
 jobs:
-  scan-docker-image:
-    description: "Scans a docker image for vulnerabilities using trivy"
-    parameters:
-      image:
-        type: string
-      tag:
-        type: string
+  build:
     docker:
-      - image: circleci/buildpack-deps:stretch
+      - image: circleci/golang:1.15.5
+      - image: circleci/postgres:12.4
+        environment:
+          POSTGRES_USER: grafanatest
+          POSTGRES_DB: grafanatest
+
+    parallelism: 2
+
+    environment:
+      TEST_RESULTS: /tmp/test-results
+
     steps:
-      - setup_remote_docker
+      - checkout
+      - run: mkdir -p $TEST_RESULTS
+
       - restore_cache:
-          key: vulnerability-db
+          keys:
+            - go-mod-v4-{{ checksum "go.sum" }}
+
       - run:
-          name: Install trivy
+          name: Waiting for Postgres to be ready
+          command: dockerize -wait tcp://localhost:5432 -timeout 1m
+
+      - run:
+          name: Run unit tests
+          environment:
+            GRAFANA_TEST_DB: postgres
+
           command: |
-            VERSION=$(
-                curl --silent "https://api.github.com/repos/aquasecurity/trivy/releases/latest" | \
-                grep '"tag_name":' | \
-                sed -E 's/.*"v([^"]+)".*/\1/'
-            )
+            PACKAGE_NAMES=$(go list ./... | circleci tests split --split-by=timings --timings-type=classname)
+            gotestsum --junitfile ${TEST_RESULTS}/gotestsum-report.xml -- $PACKAGE_NAMES
 
-            wget https://github.com/aquasecurity/trivy/releases/download/v${VERSION}/trivy_${VERSION}_Linux-64bit.tar.gz
-            tar zxvf trivy_${VERSION}_Linux-64bit.tar.gz
-            sudo mv trivy /usr/local/bin
-      - run:
-          name: Clear trivy cache
-          command: trivy --clear-cache
-      - run:
-          name: Scan Docker image for unkown/low/medium vulnerabilities
-          command: trivy --exit-code 0 --severity UNKNOWN,LOW,MEDIUM << parameters.image >>:<< parameters.tag >>
-      - run:
-          name: Scan Docker image for high/critical vulnerabilities
-          command: trivy --exit-code 1 --severity HIGH,CRITICAL << parameters.image >>:<< parameters.tag >>
+      - run: make
+
       - save_cache:
-          key: vulnerability-db
+          key: go-mod-v4-{{ checksum "go.sum" }}
           paths:
-            - $HOME/.cache/trivy
+            - "/go/pkg/mod"
 
+#      - run:
+#          name: Start service
+#          environment:
+#            CONTACTS_DB_URL: "postgres://circleci-demo-go@localhost:5432/circle_test?sslmode=disable"
+#            CONTACTS_DB_MIGRATIONS: /home/circleci/project/db/migrations
+#          command: ./workdir/contacts
+#          background: true
+#
+#      - run:
+#          name: Validate service is working
+#          command: |
+#            sleep 5
+#            curl --retry 10 --retry-delay 1 -X POST --header "Content-Type: application/json" -d '{"email":"test@example.com","name":"Test User"}' http://localhost:8080/contacts
+
+      - store_artifacts:
+          path: /tmp/test-results
+          destination: raw-test-output
+
+      - store_test_results:
+          path: /tmp/test-results
 workflows:
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"
-          filters: *filter-only-master
+  version: 2
+  build-workflow:
     jobs:
-      - scan-docker-image:
-          matrix:
-            parameters:
-              image: [grafana/grafana, grafana/grafana-enterprise]
-              tag: [latest, master, latest-ubuntu, master-ubuntu]
+      - build
