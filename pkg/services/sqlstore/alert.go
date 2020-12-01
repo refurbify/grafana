@@ -23,7 +23,7 @@ func init() {
 	bus.AddHandler("sql", GetAlertStatesForDashboard)
 	bus.AddHandler("sql", PauseAlert)
 	bus.AddHandler("sql", PauseAllAlerts)
-	bus.AddHandler("sql", GetAlertsByDashboardId) // Clarity Changes
+	bus.AddHandler("sql", GetAlertsForDashboard) // Clarity Changes
 }
 
 func GetAlertById(query *models.GetAlertByIdQuery) error {
@@ -41,7 +41,7 @@ func GetAlertById(query *models.GetAlertByIdQuery) error {
 }
 
 // Clarity Changes
-func GetAlertsByDashboardId(query *models.GetAlertsByDashboardId) error {
+func GetAlertsForDashboard(query *models.GetAlertsByDashboardId) error {
 	var alerts []*models.Alert
 	err := x.SQL("select * from alert where dashboard_id = ?", query.Id).Find(&alerts)
 	if err != nil {
@@ -54,16 +54,16 @@ func GetAlertsByDashboardId(query *models.GetAlertsByDashboardId) error {
 
 // Clarity Changes used to save multiple alerts
 // New Query to fetch alerts specific to the user, dashboard and panel
-func GetAlertForUser(dashboardId int64, panelId int64, userId int64, sess *DBSession) (error, *models.Alert) {
+func GetAlertsForUser(dashboardId int64, panelId int64, userId int64, sess *DBSession) (*models.Alert, error) {
 	alert := models.Alert{}
-	has, err := x.SQL("select * from alert where  dashboard_id = ? and panel_id = ? and user_id = ?", dashboardId, panelId, userId).Get(&alert)
+	has, err := x.SQL("select * from alert where dashboard_id = ? and panel_id = ? and user_id = ?", dashboardId, panelId, userId).Get(&alert)
 	if !has {
-		return fmt.Errorf("alert does not exist"), nil
+		return nil, fmt.Errorf("alert does not exist")
 	}
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
-	return nil, &alert
+	return &alert, nil
 }
 
 func GetAllAlertQueryHandler(query *models.GetAllAlertsQuery) error {
@@ -122,9 +122,9 @@ func HandleAlertsQuery(query *models.GetAlertsQuery) error {
 	// Clarity Change to display user specific alerts on alert list panel.
 	// If the user is Admin then display all the alerts.
 	if query.User.OrgRole == models.ROLE_ADMIN {
-		builder.Write(`WHERE alert.org_id = ?`, query.OrgId)
+		builder.Write(` WHERE alert.org_id = ?`, query.OrgId)
 	} else {
-		builder.Write(`WHERE alert.user_id = ?`, query.UserId)
+		builder.Write(` WHERE alert.user_id = ?`, query.UserId)
 	}
 
 	if len(strings.TrimSpace(query.Query)) > 0 {
@@ -230,12 +230,12 @@ func updateAlerts(existingAlerts []*models.Alert, cmd *models.SaveAlertsCommand,
 		userNotValid := false
 		var alertToUpdate *models.Alert
 
-		err, result := GetAlertForUser(alert.DashboardId, alert.PanelId, alert.UserId, sess)
+		result, err := GetAlertsForUser(alert.DashboardId, alert.PanelId, alert.UserId, sess)
 		if err != nil && err.Error() != "alert does not exist" {
 			return err
 		}
 		if result != nil {
-			if alert.UserId == result.UserId {
+			if cmd.UserId == result.UserId {
 				update = true
 				alert.Id = result.Id
 				alertToUpdate = result
@@ -256,6 +256,7 @@ func updateAlerts(existingAlerts []*models.Alert, cmd *models.SaveAlertsCommand,
 			sqlog.Debug("Alert inserted", "name", alert.Name, "id", alert.Id)
 			return nil
 		}
+
 		if update {
 			if alertToUpdate.ContainsUpdates(alert) {
 				alert.Updated = timeNow()
@@ -271,10 +272,12 @@ func updateAlerts(existingAlerts []*models.Alert, cmd *models.SaveAlertsCommand,
 				return nil
 			}
 		}
+
 		if userNotValid {
 			err := "This user is not authorised to update the alerts"
 			return dashboards.ValidationError{Reason: err}
 		}
+
 		tags := alert.GetTagsFromSettings()
 		if _, err := sess.Exec("DELETE FROM alert_rule_tag WHERE alert_id = ?", alert.Id); err != nil {
 			return err

@@ -4,9 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/grafana/grafana/pkg/models"
-	"github.com/grafana/grafana/pkg/services/alerting"
-	"github.com/grafana/grafana/pkg/services/dashboards"
 	"os"
 	"path"
 	"path/filepath"
@@ -17,7 +14,10 @@ import (
 	"github.com/grafana/grafana/pkg/components/simplejson"
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/infra/metrics"
+	"github.com/grafana/grafana/pkg/models"
 	"github.com/grafana/grafana/pkg/plugins"
+	"github.com/grafana/grafana/pkg/services/alerting"
+	"github.com/grafana/grafana/pkg/services/dashboards"
 	"github.com/grafana/grafana/pkg/services/guardian"
 	"github.com/grafana/grafana/pkg/util"
 )
@@ -136,41 +136,12 @@ func (hs *HTTPServer) GetDashboard(c *models.ReqContext) Response {
 		Meta:      meta,
 	}
 
-	// Clarity Changes to retrieve user specific alerts on the dashboard.
-	// This change will fetch alerts from the alert table, rather than the dashboard table and re-populate the
-	// dashboard json with these alerts.
-	query := models.GetAlertsByDashboardId{
-		Id: dash.Id,
+	// Clarity Changes
+	panelList, rsp := getDashboardAlerts(dash, c.UserId)
+	if rsp == nil {
+		dto.Dashboard.Set("panels", panelList)
 	}
 
-	if err := bus.Dispatch(&query); err != nil {
-		return Error(500, "Failed to fetch alerts", err)
-	}
-
-	var panel *simplejson.Json
-	var newPanel []*simplejson.Json
-	var isAlertSet bool
-
-	for _, panelObj := range dash.Data.Get("panels").MustArray() {
-		panel = simplejson.NewFromAny(panelObj)
-		isAlertSet = false
-
-		for _, alert := range query.Result {
-			if alert.PanelId == panel.Get("id").MustInt64() && alert.UserId == c.UserId {
-				panel.Set("alert", alert.Settings)
-				newPanel = append(newPanel, panel)
-				isAlertSet = true
-				break
-			}
-		}
-
-		if isAlertSet == false {
-			panel.Del("alert")
-			newPanel = append(newPanel, panel)
-		}
-	}
-
-	dto.Dashboard.Set("panels", newPanel)
 	c.TimeRequest(metrics.MApiDashboardGet)
 	return JSON(200, dto)
 }
@@ -198,6 +169,44 @@ func getDashboardHelper(orgID int64, slug string, id int64, uid string) (*models
 	}
 
 	return query.Result, nil
+}
+
+// Clarity Changes to retrieve user specific alerts on the dashboard.
+// This change will fetch alerts from the alert table, rather than the dashboard table and re-populate the
+// dashboard json with these alerts.
+func getDashboardAlerts(dash *models.Dashboard, userId int64) ([]*simplejson.Json, Response) {
+	query := models.GetAlertsByDashboardId{
+		Id: dash.Id,
+	}
+
+	if err := bus.Dispatch(&query); err != nil {
+		return nil, Error(500, "Failed to fetch alerts", err)
+	}
+
+	var panel *simplejson.Json
+	var panelList []*simplejson.Json
+	var isAlertSet bool
+
+	for _, panelObj := range dash.Data.Get("panels").MustArray() {
+		panel = simplejson.NewFromAny(panelObj)
+		isAlertSet = false
+
+		for _, alert := range query.Result {
+			if alert.PanelId == panel.Get("id").MustInt64() && alert.UserId == userId {
+				panel.Set("alert", alert.Settings)
+				panelList = append(panelList, panel)
+				isAlertSet = true
+				break
+			}
+		}
+
+		if isAlertSet == false {
+			panel.Del("alert")
+			panelList = append(panelList, panel)
+		}
+	}
+
+	return panelList, nil
 }
 
 func DeleteDashboardBySlug(c *models.ReqContext) Response {

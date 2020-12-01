@@ -233,6 +233,7 @@ type AlertListItemDTO struct {
 	EvalData       *simplejson.Json `json:"evalData"`
 	ExecutionError string           `json:"executionError"`
 	Url            string           `json:"url"`
+	UserId         int64            `json:"user_id"`
 }
 
 type AlertStateInfoDTO struct {
