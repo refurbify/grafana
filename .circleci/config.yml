@@ -1,5 +1,11 @@
 version: 2.1
 
+aliases:
+  # Workflow filters
+  - &filter-only-master
+    branches:
+      only: master
+
 jobs:
   scan-docker-image:
     description: "Scans a docker image for vulnerabilities using trivy"
@@ -39,68 +45,53 @@ jobs:
           key: vulnerability-db
           paths:
             - $HOME/.cache/trivy
+
   build:
     docker:
       - image: circleci/golang:1.15.5
       - image: circleci/postgres:12.4
         environment:
-          POSTGRES_USER: grafanatest
           POSTGRES_DB: grafanatest
-
+          POSTGRES_USER: grafanatest
+          POSTGRES_PASSWORD: grafanatest
     parallelism: 2
-
     environment:
       TEST_RESULTS: /tmp/test-results
-
     steps:
       - checkout
       - run: mkdir -p $TEST_RESULTS
-
-      - restore_cache:
-          keys:
-            - go-mod-v4-{{ checksum "go.sum" }}
-
       - run:
           name: Waiting for Postgres to be ready
           command: dockerize -wait tcp://localhost:5432 -timeout 1m
-
       - run:
-          name: Run unit tests
+          name: Run tests
           environment:
             GRAFANA_TEST_DB: postgres
-
           command: |
-            PACKAGE_NAMES=$(go list ./... | circleci tests split --split-by=timings --timings-type=classname)
+            packages=()
+            prefix="$(pwd)"
+
+            for package in $(go list ./...); do
+              if [ "$(find "${prefix}${package:26}" -maxdepth 1 -type f -name "*_vrm_test.go" | wc -l | xargs)" != "0" ] ; then
+                packages+=("$package")
+              fi
+            done
+
+            PACKAGE_NAMES=$(echo "${packages[@]}" | circleci tests split --split-by=timings --timings-type=classname)
             gotestsum --junitfile ${TEST_RESULTS}/gotestsum-report.xml -- $PACKAGE_NAMES
 
-      - run: make
-
-      - save_cache:
-          key: go-mod-v4-{{ checksum "go.sum" }}
-          paths:
-            - "/go/pkg/mod"
-
-#      - run:
-#          name: Start service
-#          environment:
-#            CONTACTS_DB_URL: "postgres://circleci-demo-go@localhost:5432/circle_test?sslmode=disable"
-#            CONTACTS_DB_MIGRATIONS: /home/circleci/project/db/migrations
-#          command: ./workdir/contacts
-#          background: true
-#
-#      - run:
-#          name: Validate service is working
-#          command: |
-#            sleep 5
-#            curl --retry 10 --retry-delay 1 -X POST --header "Content-Type: application/json" -d '{"email":"test@example.com","name":"Test User"}' http://localhost:8080/contacts
-
-      - store_artifacts:
-          path: /tmp/test-results
-          destination: raw-test-output
-
-      - store_test_results:
-          path: /tmp/test-results
 workflows:
-  build-workflow:
+#  nightly:
+#    triggers:
+#      - schedule:
+#          cron: "0 0 * * *"
+#          filters: *filter-only-master
+#    jobs:
+#      - scan-docker-image:
+#          matrix:
+#            parameters:
+#              image: [ grafana/grafana, grafana/grafana-enterprise ]
+#              tag: [ latest, master, latest-ubuntu, master-ubuntu ]
+  vrm-test:
     jobs:
       - build
