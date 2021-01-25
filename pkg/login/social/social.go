@@ -22,12 +22,13 @@ var (
 )
 
 type BasicUserInfo struct {
-	Id             string
-	Name           string
-	Email          string
-	Login          string
-	Company        string
-	Role           string
+	Id      string
+	Name    string
+	Email   string
+	Login   string
+	Company string
+	Role    string
+	// Clarity Changes
 	OrganizationID int64 `default:"0"`
 	Groups         []string
 }

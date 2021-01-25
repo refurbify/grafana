@@ -157,6 +157,7 @@ func (s *SocialGenericOAuth) UserInfo(client *http.Client, token *oauth2.Token) 
 			}
 		}
 
+		// Clarity Changes: extracting organization from user_info response
 		if userInfo.OrganizationID == 0 {
 			organization, err := s.searchJSONForAttr("organization_id", data.rawJSON)
 			if err != nil {

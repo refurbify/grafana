@@ -43,7 +43,9 @@
   @extend .view-mode--inactive;
 
   .sidemenu {
-    position: fixed;
+    display: none;
+    // Clarity Changes
+    /*position: fixed;
     background-color: transparent;
     box-shadow: none;
 
@@ -57,11 +59,21 @@
       @include media-breakpoint-down(sm) {
         display: block;
       }
-    }
+    }*/
   }
 
   .navbar {
-    padding-left: $side-menu-width;
+    // Clarity Changes
+    //padding-left: $side-menu-width;
+
+    .navbar-page-btn {
+      pointer-events: none;
+      cursor: default;
+    }
+
+    .navbar-buttons--tv {
+      display: none;
+    }
   }
 
   .submenu-controls {
