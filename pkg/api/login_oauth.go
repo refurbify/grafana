@@ -8,10 +8,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"golang.org/x/oauth2"
 	"net/http"
 	"net/url"
-
-	"golang.org/x/oauth2"
 
 	"github.com/grafana/grafana/pkg/bus"
 	"github.com/grafana/grafana/pkg/infra/log"
@@ -224,6 +223,10 @@ func buildExternalUserInfo(token *oauth2.Token, userInfo *social.BasicUserInfo, 
 			if setting.AutoAssignOrg && setting.AutoAssignOrgId > 0 {
 				orgID = int64(setting.AutoAssignOrgId)
 				logger.Debug("The user has a role assignment and organization membership is auto-assigned",
+					"role", userInfo.Role, "orgId", orgID)
+			} else if userInfo.OrganizationID != 0 {
+				orgID = userInfo.OrganizationID
+				logger.Debug("The user has a role assignment and organization membership is assigned from OAuth response",
 					"role", userInfo.Role, "orgId", orgID)
 			} else {
 				orgID = int64(1)

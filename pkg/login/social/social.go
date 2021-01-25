@@ -22,13 +22,14 @@ var (
 )
 
 type BasicUserInfo struct {
-	Id      string
-	Name    string
-	Email   string
-	Login   string
-	Company string
-	Role    string
-	Groups  []string
+	Id             string
+	Name           string
+	Email          string
+	Login          string
+	Company        string
+	Role           string
+	OrganizationID int64 `default:"0"`
+	Groups         []string
 }
 
 type SocialConnector interface {
