@@ -69,6 +69,10 @@
     .navbar-page-btn {
       pointer-events: none;
       cursor: default;
+
+      svg {
+        display: none;
+      }
     }
 
     .navbar-buttons--tv {
