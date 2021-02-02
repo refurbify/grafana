@@ -386,7 +386,12 @@ func (hs *HTTPServer) GetHomeDashboard(c *models.ReqContext) Response {
 
 	filePath := hs.Cfg.DefaultHomeDashboardPath
 	if filePath == "" {
-		filePath = path.Join(hs.Cfg.StaticRootPath, "dashboards/home.json")
+		// Clarity Changes: updating default dashboard if the user is an Editor or a Viewer
+		if c.HasUserRole(models.ROLE_EDITOR) || c.HasUserRole(models.ROLE_VIEWER) {
+			filePath = path.Join(hs.Cfg.StaticRootPath, "dashboards/home_non_admin.json")
+		} else {
+			filePath = path.Join(hs.Cfg.StaticRootPath, "dashboards/home.json")
+		}
 	}
 
 	file, err := os.Open(filePath)

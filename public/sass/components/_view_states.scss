@@ -43,8 +43,8 @@
   @extend .view-mode--inactive;
 
   .sidemenu {
+    // Clarity Changes: hide sidemenu when kiosk=tv
     display: none;
-    // Clarity Changes
     /*position: fixed;
     background-color: transparent;
     box-shadow: none;
@@ -63,7 +63,7 @@
   }
 
   .navbar {
-    // Clarity Changes
+    // Clarity Changes: hide padding for sidemenu when kiosk=tv
     //padding-left: $side-menu-width;
 
     .navbar-page-btn {

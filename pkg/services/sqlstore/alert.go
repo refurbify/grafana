@@ -119,8 +119,7 @@ func HandleAlertsQuery(query *models.GetAlertsQuery) error {
 		FROM alert
 		INNER JOIN dashboard on dashboard.id = alert.dashboard_id `)
 
-	// Clarity Change to display user specific alerts on alert list panel.
-	// If the user is Admin then display all the alerts.
+	// Clarity Change: displaying user specific alerts on alert list panel; if the user is Admin then display all the alerts.
 	if query.User.OrgRole == models.ROLE_ADMIN {
 		builder.Write(` WHERE alert.org_id = ?`, query.OrgId)
 	} else {

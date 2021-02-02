@@ -69,6 +69,14 @@ type Props = OwnProps & ConnectedProps & DispatchProps;
 export class PanelEditorUnconnected extends PureComponent<Props> {
   querySubscription: Unsubscribable;
   rafToken = createRef<number>();
+  // Clarity Changes: flag to disable panel editing controls if the user is an Editor
+  isEditor: boolean;
+
+  // Clarity Changes: initializing the flag to disable panel editing controls if the user is an Editor
+  constructor(props: Props) {
+    super(props);
+    this.isEditor = contextSrv?.user?.orgRole === 'Editor';
+  }
 
   componentDidMount() {
     this.props.initPanelEditor(this.props.sourcePanel, this.props.dashboard);
@@ -261,27 +269,30 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
     const { dashboard, location, uiState, variables, updateTimeZoneForSession } = this.props;
     return (
       <div className={styles.panelToolbar}>
-        <HorizontalGroup justify={variables.length > 0 ? 'space-between' : 'flex-end'} align="flex-start">
-          {this.renderTemplateVariables(styles)}
+        {/* Clarity Changes: disabling panel options if the user is an Editor */}
+        {!this.isEditor && (
+          <HorizontalGroup justify={variables.length > 0 ? 'space-between' : 'flex-end'} align="flex-start">
+            {this.renderTemplateVariables(styles)}
 
-          <HorizontalGroup>
-            <RadioButtonGroup value={uiState.mode} options={displayModes} onChange={this.onDisplayModeChange} />
-            <DashNavTimeControls
-              dashboard={dashboard}
-              location={location}
-              onChangeTimeZone={updateTimeZoneForSession}
-            />
-            {!uiState.isPanelOptionsVisible && (
-              <DashNavButton
-                onClick={this.onTogglePanelOptions}
-                tooltip="Open options pane"
-                classSuffix="close-options"
-              >
-                <Icon name="angle-left" /> <span style={{ paddingLeft: '6px' }}>Show options</span>
-              </DashNavButton>
-            )}
+            <HorizontalGroup>
+              <RadioButtonGroup value={uiState.mode} options={displayModes} onChange={this.onDisplayModeChange} />
+              <DashNavTimeControls
+                dashboard={dashboard}
+                location={location}
+                onChangeTimeZone={updateTimeZoneForSession}
+              />
+              {!uiState.isPanelOptionsVisible && (
+                <DashNavButton
+                  onClick={this.onTogglePanelOptions}
+                  tooltip="Open options pane"
+                  classSuffix="close-options"
+                >
+                  <Icon name="angle-left" /> <span style={{ paddingLeft: '6px' }}>Show options</span>
+                </DashNavButton>
+              )}
+            </HorizontalGroup>
           </HorizontalGroup>
-        </HorizontalGroup>
+        )}
       </div>
     );
   }
@@ -301,12 +312,15 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
 
           <HorizontalGroup>
             <HorizontalGroup spacing="sm" align="center">
-              <Button
-                icon="cog"
-                onClick={this.onOpenDashboardSettings}
-                variant="secondary"
-                title="Open dashboard settings"
-              />
+              {/* Clarity Changes: disabling dashboard settings if the user is an Editor */}
+              {!this.isEditor && (
+                <Button
+                  icon="cog"
+                  onClick={this.onOpenDashboardSettings}
+                  variant="secondary"
+                  title="Open dashboard settings"
+                />
+              )}
               <Button onClick={this.onDiscard} variant="secondary" title="Undo all changes">
                 Discard
               </Button>
@@ -327,11 +341,6 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
     const { plugin, dashboard, panel } = this.props;
 
     if (!plugin) {
-      return <div />;
-    }
-
-    // Clarity Changes
-    if (contextSrv?.user?.orgRole === 'Editor') {
       return <div />;
     }
 
@@ -392,7 +401,10 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
       <div className={styles.wrapper} aria-label={selectors.components.PanelEditor.General.content}>
         {this.editorToolbar(styles)}
         <div className={styles.verticalSplitPanesWrapper}>
-          {uiState.isPanelOptionsVisible ? this.renderWithOptionsPane(styles) : this.renderHorizontalSplit(styles)}
+          {/* Clarity Changes: hiding panel editor if the user is an Editor */}
+          {uiState.isPanelOptionsVisible && !this.isEditor
+            ? this.renderWithOptionsPane(styles)
+            : this.renderHorizontalSplit(styles)}
         </div>
       </div>
     );
