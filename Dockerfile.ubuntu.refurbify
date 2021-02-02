@@ -1,11 +1,11 @@
-FROM node:12.19.0-alpine3.12 as js-builder
+FROM node:12.19.0-slim AS js-builder
 
 WORKDIR /usr/src/app/
 
 COPY package.json yarn.lock ./
 COPY packages packages
 
-RUN yarn install --pure-lockfile --no-progress
+RUN yarn install --pure-lockfile
 
 COPY Gruntfile.js tsconfig.json .eslintrc .editorconfig .browserslistrc .prettierrc.js ./
 COPY public public
@@ -16,25 +16,23 @@ COPY emails emails
 ENV NODE_ENV production
 RUN ./node_modules/.bin/grunt build
 
-FROM golang:1.15.1-alpine3.12 as go-builder
+FROM golang:1.15.1 AS go-builder
 
-RUN apk add --no-cache gcc g++
-
-WORKDIR $GOPATH/src/github.com/grafana/grafana
+WORKDIR /src/grafana
 
 COPY go.mod go.sum ./
 
 RUN go mod verify
 
-COPY pkg pkg
 COPY build.go package.json ./
+COPY pkg pkg/
 
 RUN go run build.go build
 
-# Final stage
-FROM alpine:3.12
+FROM ubuntu:20.04
 
 LABEL maintainer="Grafana team <hello@grafana.com>"
+EXPOSE 80
 
 ARG GF_UID="472"
 ARG GF_GID="472"
@@ -49,31 +47,29 @@ ENV PATH="/usr/share/grafana/bin:$PATH" \
 
 WORKDIR $GF_PATHS_HOME
 
-RUN apk add --no-cache ca-certificates bash tzdata && \
-    apk add --no-cache openssl musl-utils
+COPY conf conf
 
-COPY conf ./conf
+# curl should be part of the image
+RUN apt-get update && apt-get install -y ca-certificates curl
 
 RUN mkdir -p "$GF_PATHS_HOME/.aws" && \
-    addgroup -S -g $GF_GID grafana && \
-    adduser -S -u $GF_UID -G grafana grafana && \
-    mkdir -p "$GF_PATHS_PROVISIONING/datasources" \
+  addgroup --system --gid $GF_GID grafana && \
+  adduser --uid $GF_UID --system --ingroup grafana grafana && \
+  mkdir -p "$GF_PATHS_PROVISIONING/datasources" \
              "$GF_PATHS_PROVISIONING/dashboards" \
              "$GF_PATHS_PROVISIONING/notifiers" \
              "$GF_PATHS_LOGS" \
              "$GF_PATHS_PLUGINS" \
              "$GF_PATHS_DATA" && \
-    cp "$GF_PATHS_HOME/conf/sample.ini" "$GF_PATHS_CONFIG" && \
-    cp "$GF_PATHS_HOME/conf/ldap.toml" /etc/grafana/ldap.toml && \
+    cp conf/sample.ini "$GF_PATHS_CONFIG" && \
+    cp conf/ldap.toml /etc/grafana/ldap.toml && \
     chown -R grafana:grafana "$GF_PATHS_DATA" "$GF_PATHS_HOME/.aws" "$GF_PATHS_LOGS" "$GF_PATHS_PLUGINS" "$GF_PATHS_PROVISIONING" && \
     chmod -R 777 "$GF_PATHS_DATA" "$GF_PATHS_HOME/.aws" "$GF_PATHS_LOGS" "$GF_PATHS_PLUGINS" "$GF_PATHS_PROVISIONING"
 
-COPY --from=go-builder /go/src/github.com/grafana/grafana/bin/linux-amd64/grafana-server /go/src/github.com/grafana/grafana/bin/linux-amd64/grafana-cli ./bin/
-COPY --from=js-builder /usr/src/app/public ./public
-COPY --from=js-builder /usr/src/app/tools ./tools
+COPY --from=go-builder /src/grafana/bin/linux-amd64/grafana-server /src/grafana/bin/linux-amd64/grafana-cli bin/
+COPY --from=js-builder /usr/src/app/public public
+COPY --from=js-builder /usr/src/app/tools tools
 
-EXPOSE 80
-
-COPY ./packaging/docker/run.sh /run.sh
+COPY packaging/docker/run.sh /
 
 ENTRYPOINT [ "/run.sh" ]
