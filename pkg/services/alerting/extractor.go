@@ -55,6 +55,7 @@ func (e *DashAlertExtractor) lookupDatasourceID(dsName string) (*models.DataSour
 	return nil, errors.New("Could not find datasource id for " + dsName)
 }
 
+// Clarity Changes: added parameter `variableMap map[string]string` to function
 func findPanelQueryByRefID(panel *simplejson.Json, refID string, variableMap map[string]string) *simplejson.Json {
 	for _, targetsObj := range panel.Get("targets").MustArray() {
 		target := simplejson.NewFromAny(targetsObj)
@@ -62,13 +63,11 @@ func findPanelQueryByRefID(panel *simplejson.Json, refID string, variableMap map
 		// Clarity Changes
 		if target.Get("rawSql").MustString() != "" {
 			rawSQL := target.Get("rawSql").MustString()
-			fmt.Println(rawSQL)
+
 			for key, val := range variableMap {
 				rawSQL = strings.Replace(rawSQL, "$"+key, val, -1)
 			}
 
-			fmt.Println("after change =============")
-			fmt.Println(rawSQL)
 			target.Set("rawSql", rawSQL)
 		}
 
@@ -124,10 +123,6 @@ func (e *DashAlertExtractor) getAlertFromPanels(jsonWithPanels *simplejson.Json,
 		variableName := currentTemplateVar.Get("name").MustString()
 
 		variableMap[variableName] = currentVariableValue
-		for key, value := range variableMap {
-			fmt.Println("----------------MAP--------------------")
-			fmt.Println("Key:", key, "Value:", value)
-		}
 	}
 	//------------------------------------------------------------------------------------------------------------------ Clarity Changes: Code for creating variable map
 

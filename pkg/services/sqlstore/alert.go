@@ -40,7 +40,7 @@ func GetAlertById(query *models.GetAlertByIdQuery) error {
 	return nil
 }
 
-// Clarity Changes
+// Clarity Changes: query to fetch alerts specific to a dashboard
 func GetAlertsForDashboard(query *models.GetAlertsByDashboardId) error {
 	var alerts []*models.Alert
 	err := x.SQL("select * from alert where dashboard_id = ?", query.Id).Find(&alerts)
@@ -52,8 +52,7 @@ func GetAlertsForDashboard(query *models.GetAlertsByDashboardId) error {
 	return nil
 }
 
-// Clarity Changes used to save multiple alerts
-// New Query to fetch alerts specific to the user, dashboard and panel
+// Clarity Changes: query to fetch alerts specific to a user, dashboard and panel
 func GetAlertsForUser(dashboardId int64, panelId int64, userId int64, sess *DBSession) (*models.Alert, error) {
 	alert := models.Alert{}
 	has, err := x.SQL("select * from alert where dashboard_id = ? and panel_id = ? and user_id = ?", dashboardId, panelId, userId).Get(&alert)
@@ -102,7 +101,7 @@ func deleteAlertByIdInternal(alertId int64, reason string, sess *DBSession) erro
 func HandleAlertsQuery(query *models.GetAlertsQuery) error {
 	builder := SqlBuilder{}
 
-	// Clarity Changes: +`alert.user_id`
+	// Clarity Changes: added `alert.user_id`
 	builder.Write(`SELECT
 		alert.id,
 		alert.dashboard_id,
@@ -220,14 +219,19 @@ func SaveAlerts(cmd *models.SaveAlertsCommand) error {
 	})
 }
 
-// Clarity Change save alert per user functionality
-// Before creating/updating any alerts Check, if the alert(For that specific dashboard,user,panel) already exists in DB,
-// yes then check if the user id is same. If yes then update the alert, else create a new one.
+// --------------------------------------------------------------------------------------------------------------------- Clarity Change: saving alerts per user
+/*
+Before creating/updating any alerts, check if the alert (for the specific dashboard, user and panel) already exists in DB
+- if YES: update the alert
+- if NO: create a new alert for the specified user, dashboard and panel
+*/
 func updateAlerts(existingAlerts []*models.Alert, cmd *models.SaveAlertsCommand, sess *DBSession) error {
 	for _, alert := range cmd.Alerts {
 		update := false
-		userNotValid := false
 		var alertToUpdate *models.Alert
+
+		// flag to check if the user is authorized to update the alerts
+		userNotValid := false
 
 		result, err := GetAlertsForUser(alert.DashboardId, alert.PanelId, alert.UserId, sess)
 		if err != nil && err.Error() != "alert does not exist" {
@@ -297,17 +301,22 @@ func updateAlerts(existingAlerts []*models.Alert, cmd *models.SaveAlertsCommand,
 	return nil
 }
 
+// --------------------------------------------------------------------------------------------------------------------- Clarity Change: saving alerts per user
+
 func deleteMissingAlerts(alerts []*models.Alert, cmd *models.SaveAlertsCommand, sess *DBSession) error {
 	for _, missingAlert := range alerts {
 		missing := true
+
 		for _, k := range cmd.Alerts {
 			if missingAlert.PanelId == k.PanelId {
 				missing = false
 				break
 			}
 		}
+
 		if missing {
-			if missingAlert.UserId == cmd.UserId { //Clarity Change to delete only current alert for the user and not all the alerts
+			//Clarity Change: check for deleting only current user's alerts and not all the alerts
+			if missingAlert.UserId == cmd.UserId {
 				if err := deleteAlertByIdInternal(missingAlert.Id, "Removed from dashboard", sess); err != nil {
 					// No use trying to delete more, since we're in a transaction and it will be
 					// rolled back on error.
@@ -423,7 +432,7 @@ func PauseAllAlerts(cmd *models.PauseAllAlertCommand) error {
 }
 
 func GetAlertStatesForDashboard(query *models.GetAlertStatesForDashboardQuery) error {
-	// Clarity Changes: +`AND user_id = ?`
+	// Clarity Changes: added `AND user_id = ?`
 	var rawSql = `SELECT
 	                id,
 	                dashboard_id,
@@ -434,7 +443,8 @@ func GetAlertStatesForDashboard(query *models.GetAlertStatesForDashboardQuery) e
 	                WHERE org_id = ? AND dashboard_id = ? AND user_id = ?`
 
 	query.Result = make([]*models.AlertStateInfoDTO, 0)
-	// Clarity Changes: +`query.UserId`
+
+	// Clarity Changes: added `query.UserId`
 	err := x.SQL(rawSql, query.OrgId, query.DashboardId, query.UserId).Find(&query.Result)
 
 	return err

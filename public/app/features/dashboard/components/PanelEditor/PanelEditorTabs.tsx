@@ -61,7 +61,7 @@ export class PanelEditorTabs extends PureComponent<PanelEditorTabsProps> {
       return null;
     }
 
-    // Clarity Changes
+    // Clarity Changes: rendering only Alert tab on the Panel edit page if the user is an Editor
     if (contextSrv?.user?.orgRole === 'Editor') {
       return (
         <div className={styles.wrapper}>

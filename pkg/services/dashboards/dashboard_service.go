@@ -291,7 +291,7 @@ func (dr *dashboardServiceImpl) SaveFolderForProvisionedDashboards(dto *SaveDash
 	return cmd.Result, nil
 }
 
-// Clarity Changes If the editor is performing save then Only Alert will be saved and not the dashboard.
+// Clarity Changes: if the editor is performing save then only alert will be saved and not the entire dashboard.
 func (dr *dashboardServiceImpl) SaveDashboard(dto *SaveDashboardDTO, allowUiUpdate bool) (*models.Dashboard, error) {
 	if err := validateDashboardRefreshInterval(dto.Dashboard); err != nil {
 		dr.log.Warn("Changing refresh interval for imported dashboard to minimum refresh interval", "dashboardUid", dto.Dashboard.Uid, "dashboardTitle", dto.Dashboard.Title, "minRefreshInterval", setting.MinRefreshInterval)
@@ -408,7 +408,7 @@ func MockDashboardService(mock *FakeDashboardService) {
 }
 
 // Clarity Changes
-func validateUserIdForAlerts(dash *models.Dashboard) error {
+/*func validateUserIdForAlerts(dash *models.Dashboard) error {
 	cmd := models.GetAlertsByDashboardId{Id: dash.Id}
 	if err := bus.Dispatch(&cmd); err != nil {
 		return err
@@ -422,4 +422,4 @@ func validateUserIdForAlerts(dash *models.Dashboard) error {
 		}
 	}
 	return nil
-}
+}*/

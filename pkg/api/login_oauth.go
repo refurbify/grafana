@@ -8,9 +8,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"golang.org/x/oauth2"
 	"net/http"
 	"net/url"
+
+	"golang.org/x/oauth2"
 
 	"github.com/grafana/grafana/pkg/bus"
 	"github.com/grafana/grafana/pkg/infra/log"
@@ -219,13 +220,13 @@ func buildExternalUserInfo(token *oauth2.Token, userInfo *social.BasicUserInfo, 
 		rt := models.RoleType(userInfo.Role)
 		if rt.IsValid() {
 			// The user will be assigned a role in either the auto-assigned organization or in the default one
-			// Clarity Changes (else if block): adding support for assigning roles in organizations based on OAuth response
 			var orgID int64
 			if setting.AutoAssignOrg && setting.AutoAssignOrgId > 0 {
 				orgID = int64(setting.AutoAssignOrgId)
 				logger.Debug("The user has a role assignment and organization membership is auto-assigned",
 					"role", userInfo.Role, "orgId", orgID)
 			} else if userInfo.OrganizationID != 0 {
+				// Clarity Changes (else if block): adding support for assigning roles in organizations based on OAuth response
 				orgID = userInfo.OrganizationID
 				logger.Debug("The user has a role assignment and organization membership is assigned from OAuth response",
 					"role", userInfo.Role, "orgId", orgID)

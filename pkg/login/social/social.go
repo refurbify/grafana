@@ -22,14 +22,13 @@ var (
 )
 
 type BasicUserInfo struct {
-	Id      string
-	Name    string
-	Email   string
-	Login   string
-	Company string
-	Role    string
-	// Clarity Changes
-	OrganizationID int64 `default:"0"`
+	Id             string
+	Name           string
+	Email          string
+	Login          string
+	Company        string
+	Role           string
+	OrganizationID int64 `default:"0"` // Clarity Changes: supporting Organization ID in OAuth response
 	Groups         []string
 }
 

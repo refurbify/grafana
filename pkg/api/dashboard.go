@@ -8,16 +8,17 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/grafana/grafana/pkg/models"
+	"github.com/grafana/grafana/pkg/services/alerting"
+	"github.com/grafana/grafana/pkg/services/dashboards"
+
 	"github.com/grafana/grafana/pkg/api/dtos"
 	"github.com/grafana/grafana/pkg/bus"
 	"github.com/grafana/grafana/pkg/components/dashdiffs"
 	"github.com/grafana/grafana/pkg/components/simplejson"
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/infra/metrics"
-	"github.com/grafana/grafana/pkg/models"
 	"github.com/grafana/grafana/pkg/plugins"
-	"github.com/grafana/grafana/pkg/services/alerting"
-	"github.com/grafana/grafana/pkg/services/dashboards"
 	"github.com/grafana/grafana/pkg/services/guardian"
 	"github.com/grafana/grafana/pkg/util"
 )
@@ -171,9 +172,8 @@ func getDashboardHelper(orgID int64, slug string, id int64, uid string) (*models
 	return query.Result, nil
 }
 
-// Clarity Changes to retrieve user specific alerts on the dashboard.
-// This change will fetch alerts from the alert table, rather than the dashboard table and re-populate the
-// dashboard json with these alerts.
+//Clarity Changes: retrieving user specific alerts on the dashboard.
+//This will fetch alerts from the alert table instead of the dashboard table and re-populate the dashboard json with these alerts.
 func getDashboardAlerts(dash *models.Dashboard, userId int64) ([]*simplejson.Json, Response) {
 	query := models.GetAlertsByDashboardId{
 		Id: dash.Id,
