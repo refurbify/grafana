@@ -75,7 +75,7 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
   // Clarity Changes: initializing the flag to disable panel editing controls if the user is an Editor
   constructor(props: Props) {
     super(props);
-    this.isEditor = contextSrv?.user?.orgRole === 'Editor';
+    this.isEditor = contextSrv?.hasRole('Editor');
   }
 
   componentDidMount() {

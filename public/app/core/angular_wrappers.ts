@@ -47,7 +47,7 @@ export function registerAngularDirectives() {
   react2AngularDirective('helpModal', HelpModal, []);
 
   // Clarity Changes: disabling rendering SideMenu is user is an Editor or a Viewer
-  if (!['Editor', 'Viewer'].includes(contextSrv?.user?.orgRole)) {
+  if (contextSrv?.isGrafanaAdmin || contextSrv?.hasRole('Admin')) {
     react2AngularDirective('sidemenu', SideMenu, []);
   }
 

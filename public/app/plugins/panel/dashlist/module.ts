@@ -36,7 +36,7 @@ class DashListCtrl extends PanelCtrl {
     _.defaults(this.panel, this.panelDefaults);
 
     // Clarity Changes: flag to disable starring on Dashboard List type panel if the user is an Editor or a Viewer
-    this.canStar = !['Editor', 'Viewer'].includes(contextSrv?.user?.orgRole);
+    this.canStar = contextSrv?.isGrafanaAdmin || contextSrv?.hasRole('Admin');
 
     if (this.panel.tag) {
       this.panel.tags = [this.panel.tag];

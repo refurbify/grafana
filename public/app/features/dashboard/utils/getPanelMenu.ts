@@ -18,8 +18,7 @@ export function getPanelMenu(
   angularComponent?: AngularComponent | null
 ): PanelMenuItem[] {
   // Clarity Changes: flag to disable dropdown items from Panel Title dropdown menu if the user is an Editor or a Viewer
-  const isEditor = contextSrv?.user?.orgRole === 'Editor';
-  const isAdmin = !(isEditor || contextSrv?.user?.orgRole === 'Viewer');
+  const isAdmin = contextSrv?.isGrafanaAdmin || contextSrv?.hasRole('Admin');
 
   const onViewPanel = (event: React.MouseEvent<any>) => {
     event.preventDefault();
@@ -117,7 +116,7 @@ export function getPanelMenu(
   }
 
   // Clarity Changes: disabling Explore option in the Panel Title dropdown menu if the user is an Editor
-  if (contextSrv.hasAccessToExplore() && !(panel.plugin && panel.plugin.meta.skipDataQuery) && !isEditor) {
+  if (contextSrv.hasAccessToExplore() && !(panel.plugin && panel.plugin.meta.skipDataQuery) && isAdmin) {
     menu.push({
       text: 'Explore',
       iconClassName: 'compass',
@@ -163,7 +162,7 @@ export function getPanelMenu(
   const subMenu: PanelMenuItem[] = [];
 
   // Clarity Changes: disabling Duplicate and Copy options under More in the Panel Title dropdown menu if the user is an Editor
-  if (dashboard.canEditPanel(panel) && !(panel.isViewing || panel.isEditing) && !isEditor) {
+  if (dashboard.canEditPanel(panel) && !(panel.isViewing || panel.isEditing) && isAdmin) {
     subMenu.push({
       text: 'Duplicate',
       onClick: onDuplicatePanel,
@@ -210,7 +209,7 @@ export function getPanelMenu(
   }
 
   // Clarity Changes: disabling Remove option in the Panel Title dropdown menu if the user is an Editor
-  if (dashboard.canEditPanel(panel) && !panel.isEditing && !isEditor) {
+  if (dashboard.canEditPanel(panel) && !panel.isEditing && isAdmin) {
     menu.push({ type: 'divider', text: '' });
 
     menu.push({
