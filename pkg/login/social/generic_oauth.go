@@ -12,6 +12,7 @@ import (
 	"net/mail"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/grafana/grafana/pkg/models"
 	"github.com/grafana/grafana/pkg/util/errutil"
@@ -158,17 +159,20 @@ func (s *SocialGenericOAuth) UserInfo(client *http.Client, token *oauth2.Token) 
 		}
 
 		// Clarity Changes: extracting organization from user_info response
-		if userInfo.OrganizationID == 0 {
-			organization, err := s.searchJSONForAttr("organization_id", data.rawJSON)
+		if len(userInfo.OrganizationIDs) == 0 {
+			organizations, err := s.searchJSONForAttr("organization_ids", data.rawJSON)
+			organizationsIds := strings.Split(organizations, ",")
 			if err != nil {
 				s.log.Error("Failed to extract organization", "error", err)
-			} else if organization != "" {
-				organizationId, err := strconv.ParseInt(organization, 10, 64)
-				if err != nil {
-					s.log.Error("Invalid organization ID", "error", err)
-				} else if organizationId != 0 {
-					s.log.Debug("Setting user info organization from extracted organization")
-					userInfo.OrganizationID = organizationId
+			} else if len(organizationsIds) > 0 {
+				for _, organizationsId := range organizationsIds {
+					organizationId, err := strconv.ParseInt(organizationsId, 10, 64)
+					if err != nil {
+						s.log.Error("Invalid organization ID", "error", err)
+					} else if organizationId != 0 {
+						s.log.Debug("Setting user info organization from extracted organization")
+						userInfo.OrganizationIDs = append(userInfo.OrganizationIDs, organizationId)
+					}
 				}
 			}
 		}
