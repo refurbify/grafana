@@ -126,7 +126,7 @@ func createUser(extUser *models.ExternalUserInfo) (*models.User, error) {
 		Login:        extUser.Login,
 		Email:        extUser.Email,
 		Name:         extUser.Name,
-		IsAdmin:      *extUser.IsGrafanaAdmin,
+		IsAdmin:      *extUser.IsGrafanaAdmin, // Clarity Changes: setting Grafana Admin flag during Generic OAuth
 		SkipOrgSetup: len(extUser.OrgRoles) > 0,
 	}
 

@@ -214,7 +214,7 @@ func buildExternalUserInfo(token *oauth2.Token, userInfo *social.BasicUserInfo, 
 		Email:          userInfo.Email,
 		OrgRoles:       map[int64]models.RoleType{},
 		Groups:         userInfo.Groups,
-		IsGrafanaAdmin: userInfo.IsGrafanaAdmin,
+		IsGrafanaAdmin: userInfo.IsGrafanaAdmin, // Clarity Changes: setting Grafana Admin flag during Generic OAuth
 	}
 
 	if userInfo.Role != "" {
