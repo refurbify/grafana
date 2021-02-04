@@ -60,14 +60,16 @@ type Props = StateProps & OwnProps & DispatchProps;
 
 class DashNav extends PureComponent<Props> {
   playlistSrv: PlaylistSrv;
+
   // Clarity Changes: flag to disable dashboard navbar controls if the user is an Editor or a Viewer
   isAdmin: boolean;
 
   constructor(props: Props) {
     super(props);
     this.playlistSrv = this.props.$injector.get('playlistSrv');
+
     // Clarity Changes: flag to disable dashboard navbar controls if the user is an Editor or a Viewer
-    this.isAdmin = contextSrv?.isGrafanaAdmin || contextSrv?.hasRole('Admin');
+    this.isAdmin = contextSrv?.shouldAllowByRoleInRefurbify();
   }
 
   onFolderNameClick = () => {

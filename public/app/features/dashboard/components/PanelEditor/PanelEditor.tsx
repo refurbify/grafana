@@ -70,12 +70,12 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
   querySubscription: Unsubscribable;
   rafToken = createRef<number>();
   // Clarity Changes: flag to disable panel editing controls if the user is an Editor
-  isEditor: boolean;
+  isAdmin: boolean;
 
   // Clarity Changes: initializing the flag to disable panel editing controls if the user is an Editor
   constructor(props: Props) {
     super(props);
-    this.isEditor = contextSrv?.hasRole('Editor');
+    this.isAdmin = contextSrv?.shouldAllowByRoleInRefurbify();
   }
 
   componentDidMount() {
@@ -270,7 +270,7 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
     return (
       <div className={styles.panelToolbar}>
         {/* Clarity Changes: disabling panel options if the user is an Editor */}
-        {!this.isEditor && (
+        {this.isAdmin && (
           <HorizontalGroup justify={variables.length > 0 ? 'space-between' : 'flex-end'} align="flex-start">
             {this.renderTemplateVariables(styles)}
 
@@ -313,7 +313,7 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
           <HorizontalGroup>
             <HorizontalGroup spacing="sm" align="center">
               {/* Clarity Changes: disabling dashboard settings if the user is an Editor */}
-              {!this.isEditor && (
+              {this.isAdmin && (
                 <Button
                   icon="cog"
                   onClick={this.onOpenDashboardSettings}
@@ -402,7 +402,7 @@ export class PanelEditorUnconnected extends PureComponent<Props> {
         {this.editorToolbar(styles)}
         <div className={styles.verticalSplitPanesWrapper}>
           {/* Clarity Changes: hiding panel editor if the user is an Editor */}
-          {uiState.isPanelOptionsVisible && !this.isEditor
+          {uiState.isPanelOptionsVisible && this.isAdmin
             ? this.renderWithOptionsPane(styles)
             : this.renderHorizontalSplit(styles)}
         </div>

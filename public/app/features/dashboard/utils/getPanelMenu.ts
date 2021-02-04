@@ -18,7 +18,7 @@ export function getPanelMenu(
   angularComponent?: AngularComponent | null
 ): PanelMenuItem[] {
   // Clarity Changes: flag to disable dropdown items from Panel Title dropdown menu if the user is an Editor or a Viewer
-  const isAdmin = contextSrv?.isGrafanaAdmin || contextSrv?.hasRole('Admin');
+  const isAdmin = contextSrv?.shouldAllowByRoleInRefurbify();
 
   const onViewPanel = (event: React.MouseEvent<any>) => {
     event.preventDefault();

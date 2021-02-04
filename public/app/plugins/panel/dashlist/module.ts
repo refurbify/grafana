@@ -17,7 +17,7 @@ class DashListCtrl extends PanelCtrl {
   modes: any[];
 
   // Clarity Changes: flag to disable starring on Dashboard List type panel if the user is an Editor or a Viewer
-  canStar = true;
+  isAdmin: boolean;
 
   panelDefaults: any = {
     query: '',
@@ -36,7 +36,7 @@ class DashListCtrl extends PanelCtrl {
     _.defaults(this.panel, this.panelDefaults);
 
     // Clarity Changes: flag to disable starring on Dashboard List type panel if the user is an Editor or a Viewer
-    this.canStar = contextSrv?.isGrafanaAdmin || contextSrv?.hasRole('Admin');
+    this.isAdmin = contextSrv?.shouldAllowByRoleInRefurbify();
 
     if (this.panel.tag) {
       this.panel.tags = [this.panel.tag];
@@ -82,7 +82,7 @@ class DashListCtrl extends PanelCtrl {
 
     promises.push(this.getRecentDashboards());
     // Clarity Changes: hiding starred and recently searched dashboards from Dashboard List type panel if the user is an Editor or a Viewer
-    if (this.canStar) {
+    if (this.isAdmin) {
       promises.push(this.getStarred());
       promises.push(this.getSearch());
     }
