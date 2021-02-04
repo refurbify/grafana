@@ -28,8 +28,9 @@ type BasicUserInfo struct {
 	Login           string
 	Company         string
 	Role            string
-	OrganizationIDs []int64 // Clarity Changes: supporting Organization ID in OAuth response
 	Groups          []string
+	OrganizationIDs []int64 // Clarity Changes: supporting Organization IDs in OAuth response
+	IsGrafanaAdmin  *bool   // Clarity Changes: supporting Grafana Admin in OAuth response
 }
 
 type SocialConnector interface {

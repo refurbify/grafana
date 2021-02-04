@@ -100,6 +100,9 @@ func (s *SocialGenericOAuth) UserInfo(client *http.Client, token *oauth2.Token) 
 	tokenData := s.extractFromToken(token)
 	apiData := s.extractFromAPI(client)
 
+	// Clarity Changes: flag to check if the user is a Grafana Admin based on the role in user_info response
+	isGrafanaAdmin := false
+
 	userInfo := &BasicUserInfo{}
 	for _, data := range []*UserInfoJson{tokenData, apiData} {
 		if data == nil {
@@ -175,6 +178,12 @@ func (s *SocialGenericOAuth) UserInfo(client *http.Client, token *oauth2.Token) 
 					}
 				}
 			}
+		}
+
+		// Clarity Changes: extracting if the user is a Grafana Admin from user_info response
+		if userInfo.Role == string(models.ROLE_ADMIN) {
+			isGrafanaAdmin = true
+			userInfo.IsGrafanaAdmin = &isGrafanaAdmin
 		}
 	}
 

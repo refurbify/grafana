@@ -206,14 +206,15 @@ func buildExternalUserInfo(token *oauth2.Token, userInfo *social.BasicUserInfo, 
 	oauthLogger.Debug("Building external user info from OAuth user info")
 
 	extUser := &models.ExternalUserInfo{
-		AuthModule: fmt.Sprintf("oauth_%s", name),
-		OAuthToken: token,
-		AuthId:     userInfo.Id,
-		Name:       userInfo.Name,
-		Login:      userInfo.Login,
-		Email:      userInfo.Email,
-		OrgRoles:   map[int64]models.RoleType{},
-		Groups:     userInfo.Groups,
+		AuthModule:     fmt.Sprintf("oauth_%s", name),
+		OAuthToken:     token,
+		AuthId:         userInfo.Id,
+		Name:           userInfo.Name,
+		Login:          userInfo.Login,
+		Email:          userInfo.Email,
+		OrgRoles:       map[int64]models.RoleType{},
+		Groups:         userInfo.Groups,
+		IsGrafanaAdmin: userInfo.IsGrafanaAdmin,
 	}
 
 	if userInfo.Role != "" {

@@ -126,6 +126,7 @@ func createUser(extUser *models.ExternalUserInfo) (*models.User, error) {
 		Login:        extUser.Login,
 		Email:        extUser.Email,
 		Name:         extUser.Name,
+		IsAdmin:      *extUser.IsGrafanaAdmin,
 		SkipOrgSetup: len(extUser.OrgRoles) > 0,
 	}
 
