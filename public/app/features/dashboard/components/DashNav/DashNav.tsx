@@ -206,14 +206,14 @@ class DashNav extends PureComponent<Props> {
         <div>
           <div className="navbar-page-btn">
             {!isFullscreen && this.isAdmin && <Icon name="apps" size="lg" className={mainIconClassName} />}
-            {haveFolder && (
+            {haveFolder && this.isAdmin && (
               <>
                 <a className="navbar-page-btn__folder" onClick={this.onFolderNameClick}>
                   {folderTitle} <span className={folderSymbol}>/</span>
                 </a>
               </>
             )}
-            <a onClick={this.onDashboardNameClick}>{dashboard.title}</a>
+            {this.isAdmin && <a onClick={this.onDashboardNameClick}>{dashboard.title}</a>}
           </div>
         </div>
         <div className="navbar-buttons navbar-buttons--actions">{this.renderLeftActionsButton()}</div>
