@@ -122,6 +122,7 @@ func NewOAuthService() {
 		var redirectURL string
 		if redirectURL = setting.AppUrl; setting.Domain != "localhost" {
 			redirectURL = strings.Replace(setting.AppUrl, "http", "https", 1)
+			redirectURL = strings.Replace(redirectURL, ":80", "", 1)
 		}
 
 		config := oauth2.Config{
