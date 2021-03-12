@@ -81,7 +81,8 @@
   }
 
   .submenu-controls {
-    display: none;
+    // Clarity Changes: show submenu when kiosk=tv
+    display: flex !important;
   }
 }
 
@@ -98,6 +99,7 @@
   }
 
   .submenu-controls {
-    display: none;
+    // Clarity Changes: show submenu when kiosk=tv
+    display: flex !important;
   }
 }
