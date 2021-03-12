@@ -118,6 +118,12 @@ func NewOAuthService() {
 
 		setting.OAuthService.OAuthInfos[name] = info
 
+		// Clarity Changes: setting https in OAuth redirect_url without updating config server.protocol
+		var redirectURL string
+		if redirectURL = setting.AppUrl; setting.Domain != "localhost" {
+			redirectURL = strings.Replace(setting.AppUrl, "http", "https", 1)
+		}
+
 		config := oauth2.Config{
 			ClientID:     info.ClientId,
 			ClientSecret: info.ClientSecret,
@@ -126,7 +132,8 @@ func NewOAuthService() {
 				TokenURL:  info.TokenUrl,
 				AuthStyle: oauth2.AuthStyleAutoDetect,
 			},
-			RedirectURL: strings.TrimSuffix(setting.AppUrl, "/") + SocialBaseUrl + name,
+			// Clarity Changes: setting https in OAuth redirect_url without updating config server.protocol
+			RedirectURL: strings.TrimSuffix(redirectURL, "/") + SocialBaseUrl + name,
 			Scopes:      info.Scopes,
 		}
 
