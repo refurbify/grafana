@@ -122,11 +122,19 @@ func (ls *LoginService) UpsertUser(cmd *models.UpsertUserCommand) error {
 }
 
 func createUser(extUser *models.ExternalUserInfo) (*models.User, error) {
+	// Clarity Changes: setting Grafana Admin flag during Generic OAuth
+	var isGrafanaAdmin bool
+	if extUser.IsGrafanaAdmin == nil {
+		isGrafanaAdmin = false
+	} else {
+		isGrafanaAdmin = true
+	}
+
 	cmd := &models.CreateUserCommand{
 		Login:        extUser.Login,
 		Email:        extUser.Email,
 		Name:         extUser.Name,
-		IsAdmin:      *extUser.IsGrafanaAdmin, // Clarity Changes: setting Grafana Admin flag during Generic OAuth
+		IsAdmin:      isGrafanaAdmin, // Clarity Changes: setting Grafana Admin flag during Generic OAuth
 		SkipOrgSetup: len(extUser.OrgRoles) > 0,
 	}
 
