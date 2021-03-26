@@ -9,8 +9,6 @@ import { Annotations } from './Annotations';
 import { SubMenuItems } from './SubMenuItems';
 import { DashboardLink } from '../../state/DashboardModel';
 import { AnnotationQuery } from '@grafana/data';
-// Clarity Changes
-import { contextSrv } from '../../../../core/services/context_srv';
 
 interface OwnProps {
   dashboard: DashboardModel;
@@ -41,11 +39,6 @@ class SubMenuUnConnected extends PureComponent<Props> {
   };
 
   isSubMenuVisible = () => {
-    // Clarity Changes: hiding Dashboard variable controls if the user is an Editor
-    if (!contextSrv?.shouldAllowByRoleInRefurbify()) {
-      return false;
-    }
-
     if (this.props.dashboard.links.length > 0) {
       return true;
     }
