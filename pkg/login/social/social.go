@@ -22,13 +22,15 @@ var (
 )
 
 type BasicUserInfo struct {
-	Id      string
-	Name    string
-	Email   string
-	Login   string
-	Company string
-	Role    string
-	Groups  []string
+	Id              string
+	Name            string
+	Email           string
+	Login           string
+	Company         string
+	Role            string
+	Groups          []string
+	OrganizationIDs []int64 // Clarity Changes: supporting Organization IDs in OAuth response
+	IsGrafanaAdmin  *bool   // Clarity Changes: supporting Grafana Admin in OAuth response
 }
 
 type SocialConnector interface {
@@ -116,6 +118,13 @@ func NewOAuthService() {
 
 		setting.OAuthService.OAuthInfos[name] = info
 
+		// Clarity Changes: setting https in OAuth redirect_url without updating config server.protocol
+		var redirectURL string
+		if redirectURL = setting.AppUrl; setting.Domain != "localhost" {
+			redirectURL = strings.Replace(setting.AppUrl, "http", "https", 1)
+			redirectURL = strings.Replace(redirectURL, ":80", "", 1)
+		}
+
 		config := oauth2.Config{
 			ClientID:     info.ClientId,
 			ClientSecret: info.ClientSecret,
@@ -124,7 +133,8 @@ func NewOAuthService() {
 				TokenURL:  info.TokenUrl,
 				AuthStyle: oauth2.AuthStyleAutoDetect,
 			},
-			RedirectURL: strings.TrimSuffix(setting.AppUrl, "/") + SocialBaseUrl + name,
+			// Clarity Changes: setting https in OAuth redirect_url without updating config server.protocol
+			RedirectURL: strings.TrimSuffix(redirectURL, "/") + SocialBaseUrl + name,
 			Scopes:      info.Scopes,
 		}
 

@@ -30,6 +30,8 @@ import {
 import { VariableEditorContainer } from '../features/variables/editor/VariableEditorContainer';
 import { SearchField, SearchResults, SearchResultsFilter, SearchWrapper } from '../features/search';
 import { TimePickerSettings } from 'app/features/dashboard/components/DashboardSettings/TimePickerSettings';
+// Clarity Changes
+import { contextSrv } from 'app/core/services/context_srv';
 
 const { SecretFormField } = LegacyForms;
 
@@ -43,7 +45,12 @@ export function registerAngularDirectives() {
     ['onClick', { watchDepth: 'reference', wrapApply: true }],
   ]);
   react2AngularDirective('helpModal', HelpModal, []);
-  react2AngularDirective('sidemenu', SideMenu, []);
+
+  // Clarity Changes: disabling rendering SideMenu is user is an Editor or a Viewer
+  if (contextSrv?.shouldAllowByRoleInRefurbify()) {
+    react2AngularDirective('sidemenu', SideMenu, []);
+  }
+
   react2AngularDirective('functionEditor', FunctionEditor, ['func', 'onRemove', 'onMoveLeft', 'onMoveRight']);
   react2AngularDirective('appNotificationsList', AppNotificationList, []);
   react2AngularDirective('pageHeader', PageHeader, ['model', 'noTabs']);

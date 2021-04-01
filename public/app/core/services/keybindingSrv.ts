@@ -21,6 +21,9 @@ export class KeybindingSrv {
   modalOpen = false;
   timepickerOpen = false;
 
+  // Clarity Changes: flag to disable keyboard shortcuts Panel Title dropdown menu if the user is an Editor or a Viewer
+  isAdmin: boolean;
+
   /** @ngInject */
   constructor(
     private $rootScope: GrafanaRootScope,
@@ -41,16 +44,28 @@ export class KeybindingSrv {
     appEvents.on(CoreEvents.showModal, () => (this.modalOpen = true));
     appEvents.on(CoreEvents.timepickerOpen, () => (this.timepickerOpen = true));
     appEvents.on(CoreEvents.timepickerClosed, () => (this.timepickerOpen = false));
+
+    // Clarity Changes: flag to disable keyboard shortcuts Panel Title dropdown menu if the user is an Editor or a Viewer
+    this.isAdmin = contextSrv?.shouldAllowByRoleInRefurbify();
   }
 
   setupGlobal() {
     if (!(this.$location.path() === '/login')) {
-      this.bind(['?', 'h'], this.showHelpModal);
-      this.bind('g h', this.goToHome);
-      this.bind('g a', this.openAlerting);
-      this.bind('g p', this.goToProfile);
-      this.bind('s o', this.openSearch);
-      this.bind('f', this.openSearch);
+      // Clarity Changes: disabling global keyboard shortcuts if the user is an Editor or a Viewer
+      if (this.isAdmin) {
+        // disabling Heap Dialog keyboard shortcut
+        this.bind(['?', 'h'], this.showHelpModal);
+        // disabling Go to Home Dashboard keyboard shortcut
+        this.bind('g h', this.goToHome);
+        // disabling Alert List keyboard shortcut
+        this.bind('g a', this.openAlerting);
+        // disabling 'Go to Profile' keyboard shortcut
+        this.bind('g p', this.goToProfile);
+        // disabling Search Dashboard keyboard shortcut
+        this.bind('s o', this.openSearch);
+        this.bind('f', this.openSearch);
+      }
+
       this.bind('esc', this.exit);
       this.bindGlobal('esc', this.globalEsc);
     }
@@ -201,14 +216,17 @@ export class KeybindingSrv {
       dashboard.startRefresh();
     });
 
-    this.bind('mod+s', () => {
-      appEvents.emit(CoreEvents.showModalReact, {
-        component: SaveDashboardModalProxy,
-        props: {
-          dashboard,
-        },
+    // Clarity Changes: disabling Save Dashboard keyboard shortcut if the user is an Editor or a Viewer
+    if (this.isAdmin) {
+      this.bind('mod+s', () => {
+        appEvents.emit(CoreEvents.showModalReact, {
+          component: SaveDashboardModalProxy,
+          props: {
+            dashboard,
+          },
+        });
       });
-    });
+    }
 
     this.bind('t z', () => {
       scope.appEvent(CoreEvents.zoomOut, 2);
@@ -246,15 +264,19 @@ export class KeybindingSrv {
       }
     });
 
-    this.bind('i', () => {
-      if (dashboard.meta.focusPanelId) {
-        const search = _.extend(this.$location.search(), { inspect: dashboard.meta.focusPanelId });
-        this.$location.search(search);
-      }
-    });
+    // Clarity Changes: disabling Inspect keyboard shortcut in the Panel Title dropdown menu if the user is an Editor or a Viewer
+    if (this.isAdmin) {
+      this.bind('i', () => {
+        if (dashboard.meta.focusPanelId) {
+          const search = _.extend(this.$location.search(), { inspect: dashboard.meta.focusPanelId });
+          this.$location.search(search);
+        }
+      });
+    }
 
     // jump to explore if permissions allow
-    if (this.contextSrv.hasAccessToExplore()) {
+    // Clarity Changes: disabling Explore keyboard shortcut in the Panel Title dropdown menu if the user is an Editor
+    if (this.contextSrv.hasAccessToExplore() && this.isAdmin) {
       this.bind('x', async () => {
         if (dashboard.meta.focusPanelId) {
           const panel = dashboard.getPanelById(dashboard.meta.focusPanelId)!;
@@ -277,40 +299,49 @@ export class KeybindingSrv {
       });
     }
 
-    // delete panel
-    this.bind('p r', () => {
-      const panelId = dashboard.meta.focusPanelId;
+    // Clarity Changes: disabling Remove keyboard shortcut in the Panel Title dropdown menu if the user is an Editor
+    if (this.isAdmin) {
+      // delete panel
+      this.bind('p r', () => {
+        const panelId = dashboard.meta.focusPanelId;
 
-      if (panelId && dashboard.canEditPanelById(panelId)) {
-        appEvents.emit(CoreEvents.removePanel, panelId);
-        dashboard.meta.focusPanelId = 0;
-      }
-    });
+        if (panelId && dashboard.canEditPanelById(panelId)) {
+          appEvents.emit(CoreEvents.removePanel, panelId);
+          dashboard.meta.focusPanelId = 0;
+        }
+      });
+    }
 
-    // duplicate panel
-    this.bind('p d', () => {
-      const panelId = dashboard.meta.focusPanelId;
+    // Clarity Changes: disabling Duplicate keyboard shortcut under More in the Panel Title dropdown menu if the user is an Editor
+    if (this.isAdmin) {
+      // duplicate panel
+      this.bind('p d', () => {
+        const panelId = dashboard.meta.focusPanelId;
 
-      if (panelId && dashboard.canEditPanelById(panelId)) {
-        const panelIndex = dashboard.getPanelInfoById(panelId)!.index;
-        dashboard.duplicatePanel(dashboard.panels[panelIndex]);
-      }
-    });
+        if (panelId && dashboard.canEditPanelById(panelId)) {
+          const panelIndex = dashboard.getPanelInfoById(panelId)!.index;
+          dashboard.duplicatePanel(dashboard.panels[panelIndex]);
+        }
+      });
+    }
 
-    // share panel
-    this.bind('p s', () => {
-      if (dashboard.meta.focusPanelId) {
-        const panelInfo = dashboard.getPanelInfoById(dashboard.meta.focusPanelId);
+    // Clarity Changes: disabling Share keyboard shortcut in the Panel Title dropdown menu if the user is an Editor or a Viewer
+    if (this.isAdmin) {
+      // share panel
+      this.bind('p s', () => {
+        if (dashboard.meta.focusPanelId) {
+          const panelInfo = dashboard.getPanelInfoById(dashboard.meta.focusPanelId);
 
-        appEvents.emit(CoreEvents.showModalReact, {
-          component: ShareModal,
-          props: {
-            dashboard: dashboard,
-            panel: panelInfo?.panel,
-          },
-        });
-      }
-    });
+          appEvents.emit(CoreEvents.showModalReact, {
+            component: ShareModal,
+            props: {
+              dashboard: dashboard,
+              panel: panelInfo?.panel,
+            },
+          });
+        }
+      });
+    }
 
     // toggle panel legend
     this.bind('p l', () => {
@@ -339,17 +370,23 @@ export class KeybindingSrv {
       dashboard.expandRows();
     });
 
-    this.bind('d n', () => {
-      this.$location.url('/dashboard/new');
-    });
+    // Clarity Changes: disabling Create New Dashboard keyboard shortcut if the user is an Editor or a Viewer
+    if (this.isAdmin) {
+      this.bind('d n', () => {
+        this.$location.url('/dashboard/new');
+      });
+    }
 
     this.bind('d r', () => {
       dashboard.startRefresh();
     });
 
-    this.bind('d s', () => {
-      this.showDashEditView();
-    });
+    // Clarity Changes: disabling Dashboard Settings keyboard shortcut if the user is an Editor or a Viewer
+    if (this.isAdmin) {
+      this.bind('d s', () => {
+        this.showDashEditView();
+      });
+    }
 
     this.bind('d k', () => {
       appEvents.emit(CoreEvents.toggleKioskMode);
@@ -359,13 +396,16 @@ export class KeybindingSrv {
       appEvents.emit(CoreEvents.toggleViewMode);
     });
 
-    //Autofit panels
-    this.bind('d a', () => {
-      // this has to be a full page reload
-      const queryParams = store.getState().location.query;
-      const newUrlParam = queryParams.autofitpanels ? '' : '&autofitpanels';
-      window.location.href = window.location.href + newUrlParam;
-    });
+    // Clarity Changes: disabling Autofit Panels keyboard shortcut if the user is an Editor or a Viewer
+    if (this.isAdmin) {
+      //Autofit panels
+      this.bind('d a', () => {
+        // this has to be a full page reload
+        const queryParams = store.getState().location.query;
+        const newUrlParam = queryParams.autofitpanels ? '' : '&autofitpanels';
+        window.location.href = window.location.href + newUrlParam;
+      });
+    }
   }
 }
 

@@ -6,8 +6,11 @@ import { QueriesTab } from '../../panel_editor/QueriesTab';
 import { AlertTab } from 'app/features/alerting/AlertTab';
 import { TransformationsEditor } from '../TransformationsEditor/TransformationsEditor';
 import { DashboardModel, PanelModel } from '../../state';
-import { CoreEvents } from 'app/types';
+import { CoreEvents, OrgRole } from 'app/types'; // Clarity Changes: added OrgRole
 import { PanelEditorTab, PanelEditorTabId } from './types';
+
+// Clarity Changes
+import { contextSrv } from 'app/core/services/context_srv';
 
 interface PanelEditorTabsProps {
   panel: PanelModel;
@@ -56,6 +59,33 @@ export class PanelEditorTabs extends PureComponent<PanelEditorTabsProps> {
 
     if (tabs.length === 0) {
       return null;
+    }
+
+    // Clarity Changes: rendering only Alert tab on the Panel edit page if the user is an Editor
+    if (contextSrv?.hasRole(OrgRole.Editor)) {
+      const alertTab = tabs.find(item => item.text === 'Alert');
+
+      if (alertTab) {
+        return (
+          <div className={styles.wrapper}>
+            <TabsBar className={styles.tabBar}>
+              <Tab
+                key={alertTab.id}
+                label={alertTab.text}
+                active={true}
+                onChangeTab={() => onChangeTab(alertTab)}
+                icon={alertTab.icon as IconName}
+                counter={this.getCounter(alertTab)}
+              />
+            </TabsBar>
+            <TabContent className={styles.tabContent}>
+              {activeTab.id === PanelEditorTabId.Alert && <AlertTab panel={panel} dashboard={dashboard} />}
+            </TabContent>
+          </div>
+        );
+      } else {
+        return null;
+      }
     }
 
     return (

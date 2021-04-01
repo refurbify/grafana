@@ -6,6 +6,8 @@ import { backendSrv } from 'app/core/services/backend_srv';
 import { DashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
 import { PanelEvents } from '@grafana/data';
 import { promiseToDigest } from '../../../core/utils/promiseToDigest';
+// Clarity Changes
+import { contextSrv } from 'app/core/services/context_srv';
 
 class DashListCtrl extends PanelCtrl {
   static templateUrl = 'module.html';
@@ -13,6 +15,9 @@ class DashListCtrl extends PanelCtrl {
 
   groups: any[];
   modes: any[];
+
+  // Clarity Changes: flag to disable starring on Dashboard List type panel if the user is an Editor or a Viewer
+  isAdmin: boolean;
 
   panelDefaults: any = {
     query: '',
@@ -29,6 +34,9 @@ class DashListCtrl extends PanelCtrl {
   constructor($scope: IScope, $injector: auto.IInjectorService, private dashboardSrv: DashboardSrv) {
     super($scope, $injector);
     _.defaults(this.panel, this.panelDefaults);
+
+    // Clarity Changes: flag to disable starring on Dashboard List type panel if the user is an Editor or a Viewer
+    this.isAdmin = contextSrv?.shouldAllowByRoleInRefurbify();
 
     if (this.panel.tag) {
       this.panel.tags = [this.panel.tag];
@@ -73,8 +81,11 @@ class DashListCtrl extends PanelCtrl {
     const promises = [];
 
     promises.push(this.getRecentDashboards());
-    promises.push(this.getStarred());
-    promises.push(this.getSearch());
+    // Clarity Changes: hiding starred and recently searched dashboards from Dashboard List type panel if the user is an Editor or a Viewer
+    if (this.isAdmin) {
+      promises.push(this.getStarred());
+      promises.push(this.getSearch());
+    }
 
     return Promise.all(promises).then(this.renderingCompleted.bind(this));
   }

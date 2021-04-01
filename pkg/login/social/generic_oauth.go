@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/mail"
 	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/grafana/grafana/pkg/models"
 	"github.com/grafana/grafana/pkg/util/errutil"
@@ -98,6 +100,9 @@ func (s *SocialGenericOAuth) UserInfo(client *http.Client, token *oauth2.Token) 
 	tokenData := s.extractFromToken(token)
 	apiData := s.extractFromAPI(client)
 
+	// Clarity Changes: flag to check if the user is a Grafana Admin based on the role in user_info response
+	isGrafanaAdmin := false
+
 	userInfo := &BasicUserInfo{}
 	for _, data := range []*UserInfoJson{tokenData, apiData} {
 		if data == nil {
@@ -154,6 +159,31 @@ func (s *SocialGenericOAuth) UserInfo(client *http.Client, token *oauth2.Token) 
 				s.log.Debug("Setting user info role from extracted role")
 				userInfo.Role = role
 			}
+		}
+
+		// Clarity Changes: extracting organization from user_info response
+		if len(userInfo.OrganizationIDs) == 0 {
+			organizations, err := s.searchJSONForAttr("organization_ids", data.rawJSON)
+			organizationsIds := strings.Split(organizations, ",")
+			if err != nil {
+				s.log.Error("Failed to extract organization", "error", err)
+			} else if len(organizationsIds) > 0 {
+				for _, organizationsId := range organizationsIds {
+					organizationId, err := strconv.ParseInt(organizationsId, 10, 64)
+					if err != nil {
+						s.log.Error("Invalid organization ID", "error", err)
+					} else if organizationId != 0 {
+						s.log.Debug("Setting user info organization from extracted organization")
+						userInfo.OrganizationIDs = append(userInfo.OrganizationIDs, organizationId)
+					}
+				}
+			}
+		}
+
+		// Clarity Changes: extracting if the user is a Grafana Admin from user_info response
+		if userInfo.Role == string(models.ROLE_ADMIN) {
+			isGrafanaAdmin = true
+			userInfo.IsGrafanaAdmin = &isGrafanaAdmin
 		}
 	}
 

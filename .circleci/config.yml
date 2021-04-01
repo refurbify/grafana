@@ -46,15 +46,51 @@ jobs:
           paths:
             - $HOME/.cache/trivy
 
+  build:
+    docker:
+      - image: circleci/golang:1.15.5
+      - image: circleci/postgres:12.4
+        environment:
+          POSTGRES_DB: grafanatest
+          POSTGRES_USER: grafanatest
+          POSTGRES_PASSWORD: grafanatest
+    environment:
+      TEST_RESULTS: /tmp/test-results
+    steps:
+      - checkout
+      - run: mkdir -p $TEST_RESULTS
+      - run:
+          name: Waiting for Postgres to be ready
+          command: dockerize -wait tcp://localhost:5432 -timeout 1m
+      - run:
+          name: Run tests
+          environment:
+            GRAFANA_TEST_DB: postgres
+          command: |
+            packages=()
+            prefix="$(pwd)"
+
+            for package in $(go list ./...); do
+              if [ "$(find "${prefix}${package:26}" -maxdepth 1 -type f -name "*_vrm_test.go" | wc -l | xargs)" != "0" ] ; then
+                packages+=("$package")
+              fi
+            done
+
+            PACKAGE_NAMES=$(echo "${packages[@]}" | circleci tests split --split-by=timings --timings-type=classname)
+            gotestsum --junitfile ${TEST_RESULTS}/gotestsum-report.xml -- $PACKAGE_NAMES
+
 workflows:
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"
-          filters: *filter-only-master
+#  nightly:
+#    triggers:
+#      - schedule:
+#          cron: "0 0 * * *"
+#          filters: *filter-only-master
+#    jobs:
+#      - scan-docker-image:
+#          matrix:
+#            parameters:
+#              image: [ grafana/grafana, grafana/grafana-enterprise ]
+#              tag: [ latest, master, latest-ubuntu, master-ubuntu ]
+  vrm-test:
     jobs:
-      - scan-docker-image:
-          matrix:
-            parameters:
-              image: [grafana/grafana, grafana/grafana-enterprise]
-              tag: [latest, master, latest-ubuntu, master-ubuntu]
+      - build

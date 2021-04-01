@@ -38,6 +38,7 @@ func GetAlertStatesForDashboard(c *models.ReqContext) Response {
 	query := models.GetAlertStatesForDashboardQuery{
 		OrgId:       c.OrgId,
 		DashboardId: c.QueryInt64("dashboardId"),
+		UserId:      c.SignedInUser.UserId, // Clarity Changes
 	}
 
 	if err := bus.Dispatch(&query); err != nil {
@@ -106,7 +107,8 @@ func GetAlerts(c *models.ReqContext) Response {
 		PanelId:      c.QueryInt64("panelId"),
 		Limit:        c.QueryInt64("limit"),
 		User:         c.SignedInUser,
-		Query:        c.Query("query"),
+		Query:        c.Query("alertQuery"), // Clarity Changes: `query` -> `alertQuery`
+		UserId:       c.SignedInUser.UserId, // Clarity Changes
 	}
 
 	states := c.QueryStrings("state")

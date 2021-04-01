@@ -43,7 +43,9 @@
   @extend .view-mode--inactive;
 
   .sidemenu {
-    position: fixed;
+    // Clarity Changes: hide sidemenu when kiosk=tv
+    display: none;
+    /*position: fixed;
     background-color: transparent;
     box-shadow: none;
 
@@ -57,15 +59,30 @@
       @include media-breakpoint-down(sm) {
         display: block;
       }
-    }
+    }*/
   }
 
   .navbar {
-    padding-left: $side-menu-width;
+    // Clarity Changes: hide padding for sidemenu when kiosk=tv
+    //padding-left: $side-menu-width;
+
+    .navbar-page-btn {
+      pointer-events: none;
+      cursor: default;
+
+      svg {
+        display: none;
+      }
+    }
+
+    .navbar-buttons--tv {
+      display: none;
+    }
   }
 
   .submenu-controls {
-    display: none;
+    // Clarity Changes: show submenu when kiosk=tv
+    display: flex !important;
   }
 }
 
@@ -82,6 +99,7 @@
   }
 
   .submenu-controls {
-    display: none;
+    // Clarity Changes: show submenu when kiosk=tv
+    display: flex !important;
   }
 }

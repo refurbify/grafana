@@ -20,6 +20,9 @@ import { CoreEvents, StoreState } from 'app/types';
 import { ShareModal } from 'app/features/dashboard/components/ShareModal';
 import { SaveDashboardModalProxy } from 'app/features/dashboard/components/SaveDashboard/SaveDashboardModalProxy';
 
+// Clarity Changes
+import { contextSrv } from 'app/core/services/context_srv';
+
 export interface OwnProps {
   dashboard: DashboardModel;
   isFullscreen: boolean;
@@ -58,9 +61,15 @@ type Props = StateProps & OwnProps & DispatchProps;
 class DashNav extends PureComponent<Props> {
   playlistSrv: PlaylistSrv;
 
+  // Clarity Changes: flag to disable dashboard navbar controls if the user is an Editor or a Viewer
+  isAdmin: boolean;
+
   constructor(props: Props) {
     super(props);
     this.playlistSrv = this.props.$injector.get('playlistSrv');
+
+    // Clarity Changes: flag to disable dashboard navbar controls if the user is an Editor or a Viewer
+    this.isAdmin = contextSrv?.shouldAllowByRoleInRefurbify();
   }
 
   onFolderNameClick = () => {
@@ -112,10 +121,13 @@ class DashNav extends PureComponent<Props> {
   };
 
   onDashboardNameClick = () => {
-    this.props.updateLocation({
-      query: { search: 'open' },
-      partial: true,
-    });
+    // Clarity Changes: disabling dashboard switch if the user is an Editor or a Viewer
+    if (this.isAdmin) {
+      this.props.updateLocation({
+        query: { search: 'open' },
+        partial: true,
+      });
+    }
   };
 
   addCustomContent(actions: DashNavButtonModel[], buttons: ReactNode[]) {
@@ -131,7 +143,9 @@ class DashNav extends PureComponent<Props> {
     const { canStar, canShare, isStarred } = dashboard.meta;
 
     const buttons: ReactNode[] = [];
-    if (canStar) {
+
+    // Clarity Changes: disabling starring dashboards on Dashboard view page if the user is an Editor
+    if (canStar && this.isAdmin) {
       buttons.push(
         <DashNavButton
           tooltip="Mark as favorite"
@@ -146,7 +160,8 @@ class DashNav extends PureComponent<Props> {
       );
     }
 
-    if (canShare) {
+    // Clarity Changes: disabling sharing dashboards on Dashboard view page if the user is an Editor
+    if (canShare && this.isAdmin) {
       buttons.push(
         <ModalsController key="button-share">
           {({ showModal, hideModal }) => (
@@ -190,15 +205,15 @@ class DashNav extends PureComponent<Props> {
       <>
         <div>
           <div className="navbar-page-btn">
-            {!isFullscreen && <Icon name="apps" size="lg" className={mainIconClassName} />}
-            {haveFolder && (
+            {!isFullscreen && this.isAdmin && <Icon name="apps" size="lg" className={mainIconClassName} />}
+            {haveFolder && this.isAdmin && (
               <>
                 <a className="navbar-page-btn__folder" onClick={this.onFolderNameClick}>
                   {folderTitle} <span className={folderSymbol}>/</span>
                 </a>
               </>
             )}
-            <a onClick={this.onDashboardNameClick}>{dashboard.title}</a>
+            {this.isAdmin && <a onClick={this.onDashboardNameClick}>{dashboard.title}</a>}
           </div>
         </div>
         <div className="navbar-buttons navbar-buttons--actions">{this.renderLeftActionsButton()}</div>
@@ -312,11 +327,15 @@ class DashNav extends PureComponent<Props> {
           </div>
         )}
 
-        <div className="navbar-buttons navbar-buttons--actions">{this.renderRightActionsButton()}</div>
-
-        <div className="navbar-buttons navbar-buttons--tv">
-          <DashNavButton tooltip="Cycle view mode" classSuffix="tv" icon="monitor" onClick={this.onToggleTVMode} />
-        </div>
+        {/* Clarity Changes: disabling dashboard controls on Dashboard view page if the user is an Editor or a Viewer */}
+        {this.isAdmin && (
+          <div className="navbar-buttons navbar-buttons--actions">{this.renderRightActionsButton()}</div>
+        )}
+        {this.isAdmin && (
+          <div className="navbar-buttons navbar-buttons--tv">
+            <DashNavButton tooltip="Cycle view mode" classSuffix="tv" icon="monitor" onClick={this.onToggleTVMode} />
+          </div>
+        )}
 
         {!dashboard.timepicker.hidden && (
           <div className="navbar-buttons">

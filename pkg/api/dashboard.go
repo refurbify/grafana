@@ -137,6 +137,12 @@ func (hs *HTTPServer) GetDashboard(c *models.ReqContext) Response {
 		Meta:      meta,
 	}
 
+	// Clarity Changes
+	panelList, rsp := getDashboardAlerts(dash, c.UserId)
+	if rsp == nil {
+		dto.Dashboard.Set("panels", panelList)
+	}
+
 	c.TimeRequest(metrics.MApiDashboardGet)
 	return JSON(200, dto)
 }
@@ -164,6 +170,43 @@ func getDashboardHelper(orgID int64, slug string, id int64, uid string) (*models
 	}
 
 	return query.Result, nil
+}
+
+//Clarity Changes: retrieving user specific alerts on the dashboard.
+//This will fetch alerts from the alert table instead of the dashboard table and re-populate the dashboard json with these alerts.
+func getDashboardAlerts(dash *models.Dashboard, userId int64) ([]*simplejson.Json, Response) {
+	query := models.GetAlertsByDashboardId{
+		Id: dash.Id,
+	}
+
+	if err := bus.Dispatch(&query); err != nil {
+		return nil, Error(500, "Failed to fetch alerts", err)
+	}
+
+	var panel *simplejson.Json
+	var panelList []*simplejson.Json
+	var isAlertSet bool
+
+	for _, panelObj := range dash.Data.Get("panels").MustArray() {
+		panel = simplejson.NewFromAny(panelObj)
+		isAlertSet = false
+
+		for _, alert := range query.Result {
+			if alert.PanelId == panel.Get("id").MustInt64() && alert.UserId == userId {
+				panel.Set("alert", alert.Settings)
+				panelList = append(panelList, panel)
+				isAlertSet = true
+				break
+			}
+		}
+
+		if isAlertSet == false {
+			panel.Del("alert")
+			panelList = append(panelList, panel)
+		}
+	}
+
+	return panelList, nil
 }
 
 func DeleteDashboardBySlug(c *models.ReqContext) Response {
@@ -300,6 +343,11 @@ func dashboardSaveErrorToApiResponse(err error) Response {
 		return Error(400, err.Error(), nil)
 	}
 
+	// Clarity Changes
+	if validationErr, ok := err.(dashboards.ValidationError); ok {
+		return Error(422, validationErr.Error(), nil)
+	}
+
 	var validationErr alerting.ValidationError
 	if ok := errors.As(err, &validationErr); ok {
 		return Error(422, validationErr.Error(), nil)
@@ -338,7 +386,12 @@ func (hs *HTTPServer) GetHomeDashboard(c *models.ReqContext) Response {
 
 	filePath := hs.Cfg.DefaultHomeDashboardPath
 	if filePath == "" {
-		filePath = path.Join(hs.Cfg.StaticRootPath, "dashboards/home.json")
+		// Clarity Changes: updating default dashboard if the user is an Editor or a Viewer
+		if c.HasUserRole(models.ROLE_EDITOR) || c.HasUserRole(models.ROLE_VIEWER) {
+			filePath = path.Join(hs.Cfg.StaticRootPath, "dashboards/home_non_admin.json")
+		} else {
+			filePath = path.Join(hs.Cfg.StaticRootPath, "dashboards/home.json")
+		}
 	}
 
 	file, err := os.Open(filePath)

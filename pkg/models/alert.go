@@ -78,6 +78,7 @@ type Alert struct {
 	ExecutionError string
 	Frequency      int64
 	For            time.Duration
+	UserId         int64 // Clarity Changes
 
 	EvalData     *simplejson.Json
 	NewStateDate time.Time
@@ -189,6 +190,7 @@ type GetAlertsQuery struct {
 	Limit        int64
 	Query        string
 	User         *SignedInUser
+	UserId       int64 // Clarity Changes
 
 	Result []*AlertListItemDTO
 }
@@ -206,8 +208,16 @@ type GetAlertByIdQuery struct {
 type GetAlertStatesForDashboardQuery struct {
 	OrgId       int64
 	DashboardId int64
+	UserId      int64 // Clarity Changes: supporting retrieval of user specific alert states and displaying on panel as an alert status indicator
 
 	Result []*AlertStateInfoDTO
+}
+
+// Clarity Changes
+type GetAlertsByDashboardId struct {
+	Id int64
+
+	Result []*Alert
 }
 
 type AlertListItemDTO struct {
@@ -223,6 +233,7 @@ type AlertListItemDTO struct {
 	EvalData       *simplejson.Json `json:"evalData"`
 	ExecutionError string           `json:"executionError"`
 	Url            string           `json:"url"`
+	UserId         int64            `json:"user_id"` // Clarity Changes
 }
 
 type AlertStateInfoDTO struct {

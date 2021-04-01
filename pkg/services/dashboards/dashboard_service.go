@@ -1,6 +1,7 @@
 package dashboards
 
 import (
+	"fmt" // Clarity Changes
 	"strings"
 	"time"
 
@@ -30,6 +31,20 @@ type DashboardProvisioningService interface {
 	GetProvisionedDashboardDataByDashboardID(DashboardId int64) (*models.DashboardProvisioning, error)
 	UnprovisionDashboard(dashboardId int64) error
 	DeleteProvisionedDashboard(dashboardId int64, orgId int64) error
+}
+
+// Clarity Changes
+type ValidationError struct {
+	Reason      string
+	Err         error
+	AlertID     int64
+	DashboardID int64
+	PanelID     int64
+}
+
+// Clarity Changes
+func (v ValidationError) Error() string {
+	return fmt.Sprintf(v.Reason)
 }
 
 // NewService factory for creating a new dashboard service
@@ -276,6 +291,7 @@ func (dr *dashboardServiceImpl) SaveFolderForProvisionedDashboards(dto *SaveDash
 	return cmd.Result, nil
 }
 
+// Clarity Changes: if the editor is performing save then only alert will be saved and not the entire dashboard.
 func (dr *dashboardServiceImpl) SaveDashboard(dto *SaveDashboardDTO, allowUiUpdate bool) (*models.Dashboard, error) {
 	if err := validateDashboardRefreshInterval(dto.Dashboard); err != nil {
 		dr.log.Warn("Changing refresh interval for imported dashboard to minimum refresh interval", "dashboardUid", dto.Dashboard.Uid, "dashboardTitle", dto.Dashboard.Title, "minRefreshInterval", setting.MinRefreshInterval)
@@ -387,3 +403,20 @@ func MockDashboardService(mock *FakeDashboardService) {
 		return mock
 	}
 }
+
+// Clarity Changes
+/*func validateUserIdForAlerts(dash *models.Dashboard) error {
+	cmd := models.GetAlertsByDashboardId{Id: dash.Id}
+	if err := bus.Dispatch(&cmd); err != nil {
+		return err
+	}
+
+	for _, alert := range cmd.Result {
+		if alert.UserId != dash.UpdatedBy {
+			err := "This user is not authorised to update the alerts"
+			return ValidationError{Reason: err}
+
+		}
+	}
+	return nil
+}*/

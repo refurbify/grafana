@@ -17,6 +17,9 @@ export function getPanelMenu(
   panel: PanelModel,
   angularComponent?: AngularComponent | null
 ): PanelMenuItem[] {
+  // Clarity Changes: flag to disable dropdown items from Panel Title dropdown menu if the user is an Editor or a Viewer
+  const isAdmin = contextSrv?.shouldAllowByRoleInRefurbify();
+
   const onViewPanel = (event: React.MouseEvent<any>) => {
     event.preventDefault();
     store.dispatch(
@@ -102,14 +105,18 @@ export function getPanelMenu(
     });
   }
 
-  menu.push({
-    text: 'Share',
-    iconClassName: 'share-alt',
-    onClick: onSharePanel,
-    shortcut: 'p s',
-  });
+  // Clarity Changes: disabling Share option in the Panel Title dropdown menu if the user is an Editor or a Viewer
+  if (isAdmin) {
+    menu.push({
+      text: 'Share',
+      iconClassName: 'share-alt',
+      onClick: onSharePanel,
+      shortcut: 'p s',
+    });
+  }
 
-  if (contextSrv.hasAccessToExplore() && !(panel.plugin && panel.plugin.meta.skipDataQuery)) {
+  // Clarity Changes: disabling Explore option in the Panel Title dropdown menu if the user is an Editor
+  if (contextSrv.hasAccessToExplore() && !(panel.plugin && panel.plugin.meta.skipDataQuery) && isAdmin) {
     menu.push({
       text: 'Explore',
       iconClassName: 'compass',
@@ -118,40 +125,44 @@ export function getPanelMenu(
     });
   }
 
-  const inspectMenu: PanelMenuItem[] = [];
+  // Clarity Changes: disabling Inspect options in the Panel Title dropdown menu if the user is an Editor or a Viewer
+  if (isAdmin) {
+    const inspectMenu: PanelMenuItem[] = [];
 
-  // Only show these inspect actions for data plugins
-  if (panel.plugin && !panel.plugin.meta.skipDataQuery) {
+    // Only show these inspect actions for data plugins
+    if (panel.plugin && !panel.plugin.meta.skipDataQuery) {
+      inspectMenu.push({
+        text: 'Data',
+        onClick: (e: React.MouseEvent<any>) => onInspectPanel('data'),
+      });
+
+      if (dashboard.meta.canEdit) {
+        inspectMenu.push({
+          text: 'Query',
+          onClick: (e: React.MouseEvent<any>) => onInspectPanel('query'),
+        });
+      }
+    }
+
     inspectMenu.push({
-      text: 'Data',
-      onClick: (e: React.MouseEvent<any>) => onInspectPanel('data'),
+      text: 'Panel JSON',
+      onClick: (e: React.MouseEvent<any>) => onInspectPanel('json'),
     });
 
-    if (dashboard.meta.canEdit) {
-      inspectMenu.push({
-        text: 'Query',
-        onClick: (e: React.MouseEvent<any>) => onInspectPanel('query'),
-      });
-    }
+    menu.push({
+      type: 'submenu',
+      text: 'Inspect',
+      iconClassName: 'info-circle',
+      onClick: (e: React.MouseEvent<any>) => onInspectPanel(),
+      shortcut: 'i',
+      subMenu: inspectMenu,
+    });
   }
-
-  inspectMenu.push({
-    text: 'Panel JSON',
-    onClick: (e: React.MouseEvent<any>) => onInspectPanel('json'),
-  });
-
-  menu.push({
-    type: 'submenu',
-    text: 'Inspect',
-    iconClassName: 'info-circle',
-    onClick: (e: React.MouseEvent<any>) => onInspectPanel(),
-    shortcut: 'i',
-    subMenu: inspectMenu,
-  });
 
   const subMenu: PanelMenuItem[] = [];
 
-  if (dashboard.canEditPanel(panel) && !(panel.isViewing || panel.isEditing)) {
+  // Clarity Changes: disabling Duplicate and Copy options under More in the Panel Title dropdown menu if the user is an Editor
+  if (dashboard.canEditPanel(panel) && !(panel.isViewing || panel.isEditing) && isAdmin) {
     subMenu.push({
       text: 'Duplicate',
       onClick: onDuplicatePanel,
@@ -197,7 +208,8 @@ export function getPanelMenu(
     });
   }
 
-  if (dashboard.canEditPanel(panel) && !panel.isEditing) {
+  // Clarity Changes: disabling Remove option in the Panel Title dropdown menu if the user is an Editor
+  if (dashboard.canEditPanel(panel) && !panel.isEditing && isAdmin) {
     menu.push({ type: 'divider', text: '' });
 
     menu.push({

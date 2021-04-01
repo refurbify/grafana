@@ -206,31 +206,41 @@ func buildExternalUserInfo(token *oauth2.Token, userInfo *social.BasicUserInfo, 
 	oauthLogger.Debug("Building external user info from OAuth user info")
 
 	extUser := &models.ExternalUserInfo{
-		AuthModule: fmt.Sprintf("oauth_%s", name),
-		OAuthToken: token,
-		AuthId:     userInfo.Id,
-		Name:       userInfo.Name,
-		Login:      userInfo.Login,
-		Email:      userInfo.Email,
-		OrgRoles:   map[int64]models.RoleType{},
-		Groups:     userInfo.Groups,
+		AuthModule:     fmt.Sprintf("oauth_%s", name),
+		OAuthToken:     token,
+		AuthId:         userInfo.Id,
+		Name:           userInfo.Name,
+		Login:          userInfo.Login,
+		Email:          userInfo.Email,
+		OrgRoles:       map[int64]models.RoleType{},
+		Groups:         userInfo.Groups,
+		IsGrafanaAdmin: userInfo.IsGrafanaAdmin, // Clarity Changes: setting Grafana Admin flag during Generic OAuth
 	}
 
 	if userInfo.Role != "" {
 		rt := models.RoleType(userInfo.Role)
 		if rt.IsValid() {
-			// The user will be assigned a role in either the auto-assigned organization or in the default one
-			var orgID int64
-			if setting.AutoAssignOrg && setting.AutoAssignOrgId > 0 {
-				orgID = int64(setting.AutoAssignOrgId)
-				logger.Debug("The user has a role assignment and organization membership is auto-assigned",
-					"role", userInfo.Role, "orgId", orgID)
+			if len(userInfo.OrganizationIDs) > 0 {
+				// Clarity Changes (else if block): adding support for assigning roles in organizations based on OAuth response
+				for _, organizationsId := range userInfo.OrganizationIDs {
+					extUser.OrgRoles[organizationsId] = rt
+					logger.Debug("The user has a role assignment and organization membership is assigned from OAuth response",
+						"role", userInfo.Role, "orgId", organizationsId)
+				}
 			} else {
-				orgID = int64(1)
-				logger.Debug("The user has a role assignment and organization membership is not auto-assigned",
-					"role", userInfo.Role, "orgId", orgID)
+				// The user will be assigned a role in either the auto-assigned organization or in the default one
+				var orgID int64
+				if setting.AutoAssignOrg && setting.AutoAssignOrgId > 0 {
+					orgID = int64(setting.AutoAssignOrgId)
+					logger.Debug("The user has a role assignment and organization membership is auto-assigned",
+						"role", userInfo.Role, "orgId", orgID)
+				} else {
+					orgID = int64(1)
+					logger.Debug("The user has a role assignment and organization membership is not auto-assigned",
+						"role", userInfo.Role, "orgId", orgID)
+				}
+				extUser.OrgRoles[orgID] = rt
 			}
-			extUser.OrgRoles[orgID] = rt
 		}
 	}
 

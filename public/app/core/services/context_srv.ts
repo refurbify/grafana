@@ -2,6 +2,7 @@ import config from '../../core/config';
 import _ from 'lodash';
 import coreModule from 'app/core/core_module';
 import { rangeUtil } from '@grafana/data';
+import { OrgRole } from '../../types';
 
 export class User {
   id: number;
@@ -73,6 +74,10 @@ export class ContextSrv {
 
   hasAccessToExplore() {
     return (this.isEditor || config.viewersCanEdit) && config.exploreEnabled;
+  }
+
+  shouldAllowByRoleInRefurbify() {
+    return this.hasRole(OrgRole.Admin) || this.isGrafanaAdmin;
   }
 }
 
