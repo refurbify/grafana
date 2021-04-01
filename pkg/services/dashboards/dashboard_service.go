@@ -308,19 +308,10 @@ func (dr *dashboardServiceImpl) SaveDashboard(dto *SaveDashboardDTO, allowUiUpda
 		return nil, err
 	}
 
-	//Admin Changes
-	println("admin update service")
 	err = dr.updateAlerting(cmd, dto)
 	if err != nil {
 		return nil, err
 	}
-	// Clarity Changes
-	//if dto.User.OrgRole == "Editor" {
-	//	err = dr.updateAlerting(cmd, dto)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
 
 	return cmd.Result, nil
 }
